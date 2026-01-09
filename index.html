@@ -3,22 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DSO Weather Model - E-Field Severe Weather Prediction</title>
+    <title>Storm Risk Forecast</title>
     <style>
-        :root {
-            --bg-dark: #0a0a0f;
-            --bg-card: #12121a;
-            --bg-hover: #1a1a25;
-            --accent-gold: #d4af37;
-            --accent-blue: #4a9eff;
-            --accent-red: #ff4a4a;
-            --accent-green: #4aff4a;
-            --accent-purple: #9b4aff;
-            --text-primary: #e8e8e8;
-            --text-secondary: #a0a0a0;
-            --border: #2a2a35;
-        }
-
         * {
             margin: 0;
             padding: 0;
@@ -26,1115 +12,569 @@
         }
 
         body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: var(--bg-dark);
-            color: var(--text-primary);
-            line-height: 1.6;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
             min-height: 100vh;
+            padding: 1rem;
         }
 
         .container {
-            max-width: 1400px;
+            max-width: 600px;
             margin: 0 auto;
-            padding: 2rem;
         }
 
         header {
             text-align: center;
-            padding: 3rem 0;
-            border-bottom: 1px solid var(--border);
-            margin-bottom: 3rem;
+            padding: 2rem 0;
         }
 
         h1 {
-            font-size: 3rem;
-            font-weight: 300;
-            color: var(--accent-gold);
-            margin-bottom: 0.5rem;
-            letter-spacing: 2px;
-        }
-
-        h1 span {
-            font-weight: 700;
-        }
-
-        .subtitle {
-            font-size: 1.2rem;
-            color: var(--text-secondary);
-            margin-bottom: 1rem;
-        }
-
-        .tagline {
-            font-style: italic;
-            color: var(--accent-blue);
-            font-size: 1.1rem;
-        }
-
-        h2 {
-            color: var(--accent-gold);
             font-size: 1.8rem;
-            margin-bottom: 1.5rem;
-            font-weight: 400;
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 0.5rem;
-        }
-
-        h3 {
-            color: var(--text-primary);
-            font-size: 1.3rem;
-            margin-bottom: 1rem;
-            font-weight: 500;
-        }
-
-        .section {
-            background: var(--bg-card);
-            border-radius: 12px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-            border: 1px solid var(--border);
-        }
-
-        /* Constants Display */
-        .constants {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-
-        .constant-card {
-            background: var(--bg-hover);
-            padding: 1rem;
-            border-radius: 8px;
-            text-align: center;
-            border: 1px solid var(--border);
-        }
-
-        .constant-symbol {
-            font-size: 2rem;
-            color: var(--accent-gold);
-            font-family: 'Times New Roman', serif;
-        }
-
-        .constant-value {
-            font-size: 1.2rem;
-            color: var(--accent-blue);
-            font-family: monospace;
-        }
-
-        .constant-name {
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-        }
-
-        /* Equation Display */
-        .equation-box {
-            background: linear-gradient(135deg, #1a1a25 0%, #0f0f18 100%);
-            border: 2px solid var(--accent-gold);
-            border-radius: 12px;
-            padding: 2rem;
-            text-align: center;
-            margin: 2rem 0;
-        }
-
-        .equation {
-            font-size: 1.5rem;
-            font-family: 'Times New Roman', serif;
-            color: var(--text-primary);
-            margin-bottom: 1rem;
-        }
-
-        .equation-label {
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-        }
-
-        /* Inversion Matrix */
-        .inversion-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            grid-template-rows: auto auto;
-            gap: 1rem;
-            margin: 2rem 0;
-            position: relative;
-        }
-
-        .inversion-grid::before {
-            content: 'HIGH CATALYST (Equinox)';
-            position: absolute;
-            top: -2rem;
-            left: 25%;
-            color: var(--accent-gold);
-            font-size: 0.9rem;
-        }
-
-        .inversion-grid::after {
-            content: 'LOW CATALYST (Solstice)';
-            position: absolute;
-            top: -2rem;
-            right: 25%;
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-        }
-
-        .inversion-cell {
-            background: var(--bg-hover);
-            border-radius: 12px;
-            padding: 1.5rem;
-            text-align: center;
-            border: 2px solid var(--border);
-            transition: all 0.3s ease;
-        }
-
-        .inversion-cell:hover {
-            transform: scale(1.02);
-        }
-
-        .inversion-cell.tornado {
-            border-color: var(--accent-red);
-            background: linear-gradient(135deg, rgba(255,74,74,0.1) 0%, var(--bg-hover) 100%);
-        }
-
-        .inversion-cell.derecho {
-            border-color: var(--accent-purple);
-            background: linear-gradient(135deg, rgba(155,74,255,0.1) 0%, var(--bg-hover) 100%);
-        }
-
-        .inversion-cell.blizzard {
-            border-color: var(--accent-blue);
-            background: linear-gradient(135deg, rgba(74,158,255,0.1) 0%, var(--bg-hover) 100%);
-        }
-
-        .inversion-cell.stable {
-            border-color: var(--accent-green);
-            background: linear-gradient(135deg, rgba(74,255,74,0.1) 0%, var(--bg-hover) 100%);
-        }
-
-        .cell-icon {
-            font-size: 3rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .cell-title {
-            font-size: 1.3rem;
             font-weight: 600;
             margin-bottom: 0.5rem;
         }
 
-        .cell-conditions {
-            font-size: 0.85rem;
-            color: var(--text-secondary);
+        .subtitle {
+            color: #8892b0;
+            font-size: 0.95rem;
         }
 
-        .fuel-labels {
-            display: flex;
-            flex-direction: column;
-            justify-content: space-around;
-            position: absolute;
-            left: -6rem;
-            top: 2rem;
-            bottom: 0;
-            font-size: 0.9rem;
-        }
-
-        /* Catalyst Curve */
-        .catalyst-chart {
-            background: var(--bg-hover);
-            border-radius: 12px;
+        /* Risk Dial */
+        .risk-dial {
+            background: rgba(255,255,255,0.05);
+            border-radius: 20px;
             padding: 2rem;
-            margin: 2rem 0;
-        }
-
-        .chart-container {
-            position: relative;
-            height: 200px;
-            margin: 1rem 0;
-        }
-
-        .chart-bar {
-            position: absolute;
-            bottom: 0;
-            width: 7%;
-            background: linear-gradient(to top, var(--accent-blue), var(--accent-gold));
-            border-radius: 4px 4px 0 0;
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-
-        .chart-bar:hover {
-            filter: brightness(1.2);
-        }
-
-        .chart-bar.peak {
-            background: linear-gradient(to top, var(--accent-red), var(--accent-gold));
-        }
-
-        .chart-bar.low {
-            background: linear-gradient(to top, var(--accent-green), var(--accent-blue));
-        }
-
-        .chart-label {
-            position: absolute;
-            bottom: -25px;
-            width: 100%;
             text-align: center;
-            font-size: 0.75rem;
-            color: var(--text-secondary);
+            margin: 1.5rem 0;
         }
 
-        .chart-value {
-            position: absolute;
-            top: -20px;
-            width: 100%;
-            text-align: center;
-            font-size: 0.7rem;
-            color: var(--text-primary);
-        }
-
-        /* Interactive Demo */
-        .demo-controls {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .control-group {
-            background: var(--bg-hover);
-            padding: 1.5rem;
-            border-radius: 8px;
-        }
-
-        .control-group label {
-            display: block;
+        .risk-level {
+            font-size: 4rem;
             margin-bottom: 0.5rem;
-            color: var(--text-secondary);
-            font-size: 0.9rem;
         }
 
-        .control-group select,
-        .control-group input[type="range"] {
+        .risk-label {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .risk-label.low { color: #4ade80; }
+        .risk-label.moderate { color: #fbbf24; }
+        .risk-label.high { color: #f97316; }
+        .risk-label.extreme { color: #ef4444; }
+
+        .risk-description {
+            color: #94a3b8;
+            font-size: 1.1rem;
+            line-height: 1.5;
+        }
+
+        /* Threat Box */
+        .threat-box {
+            background: rgba(255,255,255,0.08);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border-left: 4px solid #64748b;
+        }
+
+        .threat-box.tornado { border-color: #ef4444; }
+        .threat-box.severe { border-color: #f97316; }
+        .threat-box.bomb { border-color: #a855f7; }
+        .threat-box.winter { border-color: #3b82f6; }
+        .threat-box.low { border-color: #4ade80; }
+
+        .threat-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .threat-detail {
+            color: #94a3b8;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        /* Controls */
+        .controls {
+            background: rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .control-row {
+            margin-bottom: 1rem;
+        }
+
+        .control-row:last-child {
+            margin-bottom: 0;
+        }
+
+        label {
+            display: block;
+            color: #94a3b8;
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+        }
+
+        select, input[type="range"] {
             width: 100%;
-            padding: 0.5rem;
-            background: var(--bg-dark);
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            color: var(--text-primary);
+            padding: 0.75rem;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            color: #fff;
             font-size: 1rem;
         }
 
-        .control-group input[type="range"] {
+        select option {
+            background: #1a1a2e;
+        }
+
+        input[type="range"] {
             -webkit-appearance: none;
             height: 8px;
-            border-radius: 4px;
+            padding: 0;
             cursor: pointer;
         }
 
-        .control-group input[type="range"]::-webkit-slider-thumb {
+        input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
-            width: 20px;
-            height: 20px;
-            background: var(--accent-gold);
+            width: 24px;
+            height: 24px;
+            background: #fff;
             border-radius: 50%;
             cursor: pointer;
         }
 
-        .value-display {
+        .date-display {
             text-align: center;
-            font-size: 1.2rem;
-            color: var(--accent-blue);
-            margin-top: 0.5rem;
-            font-family: monospace;
-        }
-
-        /* Results Panel */
-        .results-panel {
-            background: linear-gradient(135deg, #1a1a25 0%, #0f0f18 100%);
-            border: 2px solid var(--border);
-            border-radius: 12px;
-            padding: 2rem;
-            margin-top: 2rem;
-        }
-
-        .result-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .result-item {
-            text-align: center;
-            padding: 1rem;
-            background: var(--bg-hover);
-            border-radius: 8px;
-        }
-
-        .result-label {
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-            margin-bottom: 0.25rem;
-        }
-
-        .result-value {
-            font-size: 1.5rem;
-            font-weight: 600;
-            font-family: monospace;
-        }
-
-        .result-value.high { color: var(--accent-red); }
-        .result-value.medium { color: var(--accent-gold); }
-        .result-value.low { color: var(--accent-green); }
-
-        .prediction-box {
-            text-align: center;
-            padding: 1.5rem;
-            background: var(--bg-card);
-            border-radius: 8px;
-            border: 2px solid var(--accent-gold);
-        }
-
-        .prediction-type {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--accent-gold);
-            margin-bottom: 0.5rem;
-        }
-
-        .prediction-probability {
-            font-size: 1.2rem;
-            color: var(--text-secondary);
-        }
-
-        .prediction-mechanism {
-            font-size: 0.9rem;
-            color: var(--accent-blue);
-            margin-top: 0.5rem;
-            font-style: italic;
-        }
-
-        /* Summer Paradox */
-        .paradox-comparison {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 1rem;
-            margin: 2rem 0;
-        }
-
-        .paradox-card {
-            background: var(--bg-hover);
-            padding: 1.5rem;
-            border-radius: 8px;
-            text-align: center;
-            border: 2px solid var(--border);
-        }
-
-        .paradox-card.highlight {
-            border-color: var(--accent-red);
-        }
-
-        .paradox-card.lowlight {
-            border-color: var(--accent-green);
-        }
-
-        .paradox-date {
             font-size: 1.1rem;
-            color: var(--accent-gold);
-            margin-bottom: 0.5rem;
+            color: #fff;
+            margin-top: 0.5rem;
         }
 
-        .paradox-factor {
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-            margin: 0.25rem 0;
+        /* Season Indicator */
+        .season-bar {
+            display: flex;
+            justify-content: space-between;
+            margin: 1.5rem 0;
+            padding: 0.5rem 0;
         }
 
-        .paradox-result {
-            font-size: 1.5rem;
-            font-weight: 700;
-            margin-top: 1rem;
+        .season {
+            text-align: center;
+            padding: 0.5rem;
+            border-radius: 8px;
+            flex: 1;
+            margin: 0 0.25rem;
+            font-size: 0.8rem;
+            color: #64748b;
+            transition: all 0.3s ease;
         }
 
-        /* Validation */
-        .validation-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 1rem;
+        .season.active {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
         }
 
-        .validation-item {
+        .season.peak {
+            background: rgba(239,68,68,0.2);
+            color: #ef4444;
+        }
+
+        /* What to Expect */
+        .expectations {
+            background: rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .expectations h3 {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            color: #e2e8f0;
+        }
+
+        .expect-item {
             display: flex;
             align-items: center;
-            padding: 1rem;
-            background: var(--bg-hover);
-            border-radius: 8px;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
         }
 
-        .validation-icon {
+        .expect-item:last-child {
+            border-bottom: none;
+        }
+
+        .expect-icon {
             font-size: 1.5rem;
             margin-right: 1rem;
+            width: 2rem;
+            text-align: center;
         }
 
-        .validation-text {
+        .expect-text {
             flex: 1;
         }
 
-        .validation-bf {
-            font-family: monospace;
-            color: var(--accent-blue);
+        .expect-label {
             font-size: 0.9rem;
+            color: #94a3b8;
+        }
+
+        .expect-value {
+            font-size: 1rem;
+            color: #fff;
         }
 
         /* Footer */
         footer {
             text-align: center;
-            padding: 3rem 0;
-            border-top: 1px solid var(--border);
-            margin-top: 3rem;
-            color: var(--text-secondary);
+            padding: 2rem 0;
+            color: #64748b;
+            font-size: 0.85rem;
         }
 
-        .stats-row {
-            display: flex;
-            justify-content: center;
-            gap: 3rem;
-            margin-bottom: 1rem;
+        footer a {
+            color: #94a3b8;
         }
 
-        .stat {
+        /* Simple explanation toggle */
+        .why-link {
             text-align: center;
+            margin: 1rem 0;
         }
 
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--accent-gold);
-        }
-
-        .stat-label {
+        .why-link a {
+            color: #64748b;
             font-size: 0.85rem;
+            text-decoration: none;
         }
 
-        /* Regional Map Placeholder */
-        .region-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-top: 1.5rem;
+        .why-link a:hover {
+            color: #94a3b8;
         }
 
-        .region-card {
-            background: var(--bg-hover);
-            padding: 1rem;
-            border-radius: 8px;
-            border-left: 4px solid var(--accent-blue);
+        .explanation {
+            display: none;
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            color: #94a3b8;
+            line-height: 1.6;
         }
 
-        .region-name {
-            font-weight: 600;
-            margin-bottom: 0.5rem;
+        .explanation.show {
+            display: block;
         }
 
-        .region-stats {
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-        }
-
-        .danger-bar {
-            height: 6px;
-            background: var(--bg-dark);
-            border-radius: 3px;
-            margin-top: 0.5rem;
-            overflow: hidden;
-        }
-
-        .danger-fill {
-            height: 100%;
-            background: linear-gradient(90deg, var(--accent-green), var(--accent-gold), var(--accent-red));
-            border-radius: 3px;
-            transition: width 0.3s ease;
-        }
-
-        @media (max-width: 768px) {
-            h1 { font-size: 2rem; }
-            .container { padding: 1rem; }
-            .inversion-grid { grid-template-columns: 1fr; }
-            .result-grid { grid-template-columns: repeat(2, 1fr); }
-            .paradox-comparison { grid-template-columns: 1fr; }
+        .explanation strong {
+            color: #e2e8f0;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1><span>DSO</span> Weather Model</h1>
-            <p class="subtitle">Drag-Scale-Object E-Field Severe Weather Prediction</p>
-            <p class="tagline">"Weather is E-geometry, not chaos."</p>
+            <h1>🌪️ Storm Risk Forecast</h1>
+            <p class="subtitle">Simple severe weather outlook</p>
         </header>
 
-        <!-- Core Constants -->
-        <section class="section">
-            <h2>Universal Constants</h2>
-            <div class="constants">
-                <div class="constant-card">
-                    <div class="constant-symbol">φ</div>
-                    <div class="constant-value">1.618034</div>
-                    <div class="constant-name">Golden Ratio</div>
-                </div>
-                <div class="constant-card">
-                    <div class="constant-symbol">G†</div>
-                    <div class="constant-value">1.236 × 10⁻¹⁰</div>
-                    <div class="constant-name">Galactic Threshold</div>
-                </div>
-                <div class="constant-card">
-                    <div class="constant-symbol">L(7)</div>
-                    <div class="constant-value">29</div>
-                    <div class="constant-name">Lucas Number</div>
-                </div>
-                <div class="constant-card">
-                    <div class="constant-symbol">θ</div>
-                    <div class="constant-value">23.44°</div>
-                    <div class="constant-name">Earth's Axial Tilt</div>
+        <div class="controls">
+            <div class="control-row">
+                <label>Your Region</label>
+                <select id="regionSelect">
+                    <option value="tornado_alley">Oklahoma / Kansas</option>
+                    <option value="dixie_alley">Arkansas / Tennessee / Mississippi</option>
+                    <option value="southern_plains">Texas</option>
+                    <option value="midwest">Missouri / Illinois / Indiana</option>
+                    <option value="southeast">Georgia / Alabama</option>
+                    <option value="gulf_coast">Louisiana / Gulf Coast</option>
+                    <option value="northern_plains">Dakotas / Minnesota</option>
+                    <option value="great_lakes">Great Lakes Region</option>
+                    <option value="northeast">Pennsylvania / New York</option>
+                    <option value="new_england">New England</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <label>Date</label>
+                <input type="range" id="daySlider" min="1" max="365" value="105">
+                <div class="date-display" id="dateDisplay">April 15</div>
+            </div>
+        </div>
+
+        <div class="season-bar">
+            <div class="season" id="season-winter">❄️ Winter</div>
+            <div class="season" id="season-spring">🌸 Spring</div>
+            <div class="season" id="season-summer">☀️ Summer</div>
+            <div class="season" id="season-fall">🍂 Fall</div>
+        </div>
+
+        <div class="risk-dial">
+            <div class="risk-level" id="riskEmoji">⚠️</div>
+            <div class="risk-label high" id="riskLabel">HIGH RISK</div>
+            <div class="risk-description" id="riskDescription">
+                Peak severe weather season. Stay alert for watches and warnings.
+            </div>
+        </div>
+
+        <div class="threat-box tornado" id="threatBox">
+            <div class="threat-title">
+                <span id="threatIcon">🌪️</span>
+                <span id="threatName">Tornado Risk</span>
+            </div>
+            <div class="threat-detail" id="threatDetail">
+                All ingredients are in place for rotating storms. This is prime tornado season for your area.
+            </div>
+        </div>
+
+        <div class="expectations">
+            <h3>What to Expect</h3>
+            <div class="expect-item">
+                <div class="expect-icon">🌡️</div>
+                <div class="expect-text">
+                    <div class="expect-label">Storm Energy</div>
+                    <div class="expect-value" id="energyLevel">High - Gulf moisture available</div>
                 </div>
             </div>
-        </section>
-
-        <!-- Core Equations -->
-        <section class="section">
-            <h2>The DSO Weather Equations</h2>
-            
-            <div class="equation-box">
-                <div class="equation">P = E<sub>fuel</sub> × |dθ/dt| × sin(α)</div>
-                <div class="equation-label">Probability: Will a storm occur?</div>
-            </div>
-
-            <div class="equation-box">
-                <div class="equation">V = (∂E/∂φ) × |dθ/dt| × sin(α)</div>
-                <div class="equation-label">Volatility: How violent if it occurs?</div>
-            </div>
-
-            <div class="equation-box" style="border-color: var(--accent-red);">
-                <div class="equation">D = E<sub>fuel</sub> × (∂E/∂φ) × (dθ/dt)² × sin²(α)</div>
-                <div class="equation-label">Danger Index: Combined Risk Metric</div>
-            </div>
-
-            <h3 style="margin-top: 2rem;">The Four Factors:</h3>
-            <div class="constants">
-                <div class="constant-card">
-                    <div class="constant-symbol">E<sub>fuel</sub></div>
-                    <div class="constant-name">Energy Storage<br>(Gulf SST, Moisture)</div>
-                </div>
-                <div class="constant-card">
-                    <div class="constant-symbol">∂E/∂φ</div>
-                    <div class="constant-name">E-Gradient<br>(Air Mass Collision)</div>
-                </div>
-                <div class="constant-card">
-                    <div class="constant-symbol">dθ/dt</div>
-                    <div class="constant-name">Catalyst<br>(Tilt Rate)</div>
-                </div>
-                <div class="constant-card">
-                    <div class="constant-symbol">sin(α)</div>
-                    <div class="constant-name">Solar Angle<br>(Incidence)</div>
+            <div class="expect-item">
+                <div class="expect-icon">🔄</div>
+                <div class="expect-text">
+                    <div class="expect-label">Rotation Potential</div>
+                    <div class="expect-value" id="rotationLevel">High - Peak storm season</div>
                 </div>
             </div>
-        </section>
-
-        <!-- The Inversion Matrix -->
-        <section class="section">
-            <h2>The Inversion Matrix</h2>
-            <p style="color: var(--text-secondary); margin-bottom: 2rem;">
-                Storm TYPE depends on which factors dominate. The catalyst-fuel inversion explains why different seasons produce different phenomena.
-            </p>
-
-            <div style="position: relative; padding-left: 7rem; padding-top: 3rem;">
-                <div class="fuel-labels">
-                    <span style="color: var(--accent-gold);">HIGH FUEL</span>
-                    <span style="color: var(--text-secondary);">LOW FUEL</span>
-                </div>
-                
-                <div class="inversion-grid">
-                    <div class="inversion-cell tornado">
-                        <div class="cell-icon">🌪️</div>
-                        <div class="cell-title">TORNADO</div>
-                        <div class="cell-conditions">
-                            High Fuel + High Gradient + High Catalyst<br>
-                            <strong>→ Rotational Discharge</strong>
-                        </div>
-                    </div>
-                    
-                    <div class="inversion-cell derecho">
-                        <div class="cell-icon">💨</div>
-                        <div class="cell-title">DERECHO</div>
-                        <div class="cell-conditions">
-                            High Fuel + Low Gradient + Low Catalyst<br>
-                            <strong>→ Linear Discharge</strong>
-                        </div>
-                    </div>
-                    
-                    <div class="inversion-cell blizzard">
-                        <div class="cell-icon">❄️</div>
-                        <div class="cell-title">BLIZZARD</div>
-                        <div class="cell-conditions">
-                            Low Fuel + High Gradient + High Catalyst<br>
-                            <strong>→ Cold-Side Dominance</strong>
-                        </div>
-                    </div>
-                    
-                    <div class="inversion-cell stable">
-                        <div class="cell-icon">☀️</div>
-                        <div class="cell-title">FAIR WEATHER</div>
-                        <div class="cell-conditions">
-                            Low Fuel + Low Gradient + Low Catalyst<br>
-                            <strong>→ Stable Conditions</strong>
-                        </div>
-                    </div>
+            <div class="expect-item">
+                <div class="expect-icon">⚡</div>
+                <div class="expect-text">
+                    <div class="expect-label">Storm Type</div>
+                    <div class="expect-value" id="stormType">Supercells and tornadoes possible</div>
                 </div>
             </div>
-        </section>
-
-        <!-- Catalyst Curve -->
-        <section class="section">
-            <h2>The Catalyst Curve (dθ/dt)</h2>
-            <p style="color: var(--text-secondary); margin-bottom: 1rem;">
-                The rate of change of Earth's tilt angle. Peaks at equinoxes (March/September), drops to zero at solstices (June/December).
-                <strong style="color: var(--accent-gold);">This is the rotation driver.</strong>
-            </p>
-
-            <div class="catalyst-chart">
-                <div class="chart-container" id="catalystChart"></div>
-            </div>
-
-            <div style="text-align: center; margin-top: 1rem;">
-                <p style="color: var(--accent-red);">■ EQUINOX PEAK (Max Rotation)</p>
-                <p style="color: var(--accent-green);">■ SOLSTICE LOW (No Rotation)</p>
-            </div>
-        </section>
-
-        <!-- The Summer Paradox -->
-        <section class="section">
-            <h2>The Summer Paradox</h2>
-            <p style="color: var(--text-secondary); margin-bottom: 1rem;">
-                Why do tornado days <strong>decline</strong> in summer despite maximum heat? 
-                DSO explains: the catalyst (dθ/dt) goes to zero at solstice.
-            </p>
-
-            <div class="paradox-comparison">
-                <div class="paradox-card highlight">
-                    <div class="paradox-date">April 15</div>
-                    <div class="paradox-factor">Fuel: <strong>0.88</strong></div>
-                    <div class="paradox-factor">Catalyst: <strong style="color: var(--accent-red);">0.91</strong></div>
-                    <div class="paradox-factor">Gradient: <strong>1.00</strong></div>
-                    <div class="paradox-result" style="color: var(--accent-red);">
-                        Danger: 0.58<br>
-                        <span style="font-size: 1rem;">🌪️ TORNADO</span>
-                    </div>
-                </div>
-
-                <div class="paradox-card lowlight">
-                    <div class="paradox-date">June 21 (Solstice)</div>
-                    <div class="paradox-factor">Fuel: <strong>0.88</strong></div>
-                    <div class="paradox-factor">Catalyst: <strong style="color: var(--accent-green);">0.01</strong></div>
-                    <div class="paradox-factor">Gradient: <strong>1.00</strong></div>
-                    <div class="paradox-result" style="color: var(--accent-green);">
-                        Danger: 0.0001<br>
-                        <span style="font-size: 1rem;">⛈️ Thunderstorm</span>
-                    </div>
-                </div>
-
-                <div class="paradox-card">
-                    <div class="paradox-date">July 15</div>
-                    <div class="paradox-factor">Fuel: <strong>0.88</strong></div>
-                    <div class="paradox-factor">Catalyst: <strong>0.41</strong></div>
-                    <div class="paradox-factor">Gradient: <strong>1.00</strong></div>
-                    <div class="paradox-result" style="color: var(--accent-gold);">
-                        Danger: 0.14<br>
-                        <span style="font-size: 1rem;">⛈️ Severe T-Storm</span>
-                    </div>
+            <div class="expect-item">
+                <div class="expect-icon">⏰</div>
+                <div class="expect-text">
+                    <div class="expect-label">Peak Hours</div>
+                    <div class="expect-value" id="peakHours">3 PM - 7 PM</div>
                 </div>
             </div>
+        </div>
 
-            <div class="equation-box" style="border-color: var(--accent-blue);">
-                <div class="equation" style="font-size: 1.2rem;">
-                    Same fuel. Same gradient. Danger drops from <span style="color: var(--accent-red);">0.58</span> to <span style="color: var(--accent-green);">0.0001</span>.
-                </div>
-                <div class="equation-label">No catalyst = No rotation = No tornadoes</div>
-            </div>
-        </section>
+        <div class="why-link">
+            <a href="#" onclick="toggleExplanation(); return false;">Why this forecast? ▼</a>
+        </div>
 
-        <!-- Interactive Demo -->
-        <section class="section">
-            <h2>Interactive Prediction Engine</h2>
-            
-            <div class="demo-controls">
-                <div class="control-group">
-                    <label>Region</label>
-                    <select id="regionSelect">
-                        <option value="tornado_alley">Tornado Alley (OK, KS)</option>
-                        <option value="dixie_alley">Dixie Alley (AR, TN, MS)</option>
-                        <option value="midwest">Midwest (MO, IL, IN)</option>
-                        <option value="southern_plains">Southern Plains (TX)</option>
-                        <option value="northern_plains">Northern Plains (ND, SD)</option>
-                        <option value="gulf_coast">Gulf Coast (LA, MS coast)</option>
-                        <option value="southeast">Southeast (GA, AL)</option>
-                        <option value="northeast">Northeast (PA, NY)</option>
-                    </select>
-                </div>
-
-                <div class="control-group">
-                    <label>Day of Year: <span id="dayDisplay">105</span> (<span id="dateDisplay">Apr 15</span>)</label>
-                    <input type="range" id="daySlider" min="1" max="365" value="105">
-                </div>
-
-                <div class="control-group">
-                    <label>Climate Offset (°C): <span id="climateDisplay">0</span></label>
-                    <input type="range" id="climateSlider" min="0" max="4" step="0.5" value="0">
-                </div>
-            </div>
-
-            <div class="results-panel">
-                <h3>DSO Factors</h3>
-                <div class="result-grid">
-                    <div class="result-item">
-                        <div class="result-label">E-Fuel</div>
-                        <div class="result-value" id="fuelValue">0.88</div>
-                    </div>
-                    <div class="result-item">
-                        <div class="result-label">Gradient</div>
-                        <div class="result-value" id="gradientValue">1.00</div>
-                    </div>
-                    <div class="result-item">
-                        <div class="result-label">Catalyst</div>
-                        <div class="result-value" id="catalystValue">0.91</div>
-                    </div>
-                    <div class="result-item">
-                        <div class="result-label">Solar Angle</div>
-                        <div class="result-value" id="solarValue">0.89</div>
-                    </div>
-                </div>
-
-                <div class="result-grid">
-                    <div class="result-item">
-                        <div class="result-label">Probability</div>
-                        <div class="result-value" id="probValue">0.72</div>
-                    </div>
-                    <div class="result-item">
-                        <div class="result-label">Volatility</div>
-                        <div class="result-value" id="volValue">0.81</div>
-                    </div>
-                    <div class="result-item">
-                        <div class="result-label">Danger Index</div>
-                        <div class="result-value" id="dangerValue">0.58</div>
-                    </div>
-                    <div class="result-item">
-                        <div class="result-label">Season</div>
-                        <div class="result-value" id="seasonValue" style="font-size: 1rem;">Spring</div>
-                    </div>
-                </div>
-
-                <div class="prediction-box">
-                    <div class="prediction-type" id="predictionType">TORNADO</div>
-                    <div class="prediction-probability">Probability: <span id="predictionProb">81.3%</span></div>
-                    <div class="prediction-mechanism" id="predictionMech">Maximum gradient × catalyst → rotational discharge</div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Regional Forecast -->
-        <section class="section">
-            <h2>National Danger Index</h2>
-            <p style="color: var(--text-secondary);">Current day danger levels by region (based on selected date above)</p>
-            
-            <div class="region-grid" id="regionGrid"></div>
-        </section>
-
-        <!-- Validation -->
-        <section class="section">
-            <h2>Historical Validation</h2>
-            <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
-                DSO predictions vs. 70 years of observed data. Bayes Factor measures evidence strength.
-            </p>
-
-            <div class="validation-grid">
-                <div class="validation-item">
-                    <div class="validation-icon">✅</div>
-                    <div class="validation-text">
-                        <strong>Summer Tornado Decline</strong><br>
-                        <span class="validation-bf">BF = 9.00 | Conventional: Unexpected</span>
-                    </div>
-                </div>
-                <div class="validation-item">
-                    <div class="validation-icon">✅</div>
-                    <div class="validation-text">
-                        <strong>Tornado Days Decreasing</strong><br>
-                        <span class="validation-bf">BF = 5.67 | 150 → 100 days/year</span>
-                    </div>
-                </div>
-                <div class="validation-item">
-                    <div class="validation-icon">✅</div>
-                    <div class="validation-text">
-                        <strong>Tornadoes Per Outbreak Increasing</strong><br>
-                        <span class="validation-bf">BF = 4.00 | 10 → 15 per outbreak</span>
-                    </div>
-                </div>
-                <div class="validation-item">
-                    <div class="validation-icon">✅</div>
-                    <div class="validation-text">
-                        <strong>Peak Shifted 3 Weeks Earlier</strong><br>
-                        <span class="validation-bf">BF = 3.40 | June 14 → May 24</span>
-                    </div>
-                </div>
-                <div class="validation-item">
-                    <div class="validation-icon">✅</div>
-                    <div class="validation-text">
-                        <strong>Days with 30+ Tornadoes Up</strong><br>
-                        <span class="validation-bf">BF = 4.25 | 2 → 9 days/year</span>
-                    </div>
-                </div>
-                <div class="validation-item">
-                    <div class="validation-icon">✅</div>
-                    <div class="validation-text">
-                        <strong>Eastward Migration</strong><br>
-                        <span class="validation-bf">BF = 2.67 | Great Plains → Dixie Alley</span>
-                    </div>
-                </div>
-            </div>
-        </section>
+        <div class="explanation" id="explanation">
+            <p><strong>The Science (Simplified):</strong></p>
+            <p>Severe storms need three things to line up:</p>
+            <p>1. <strong>Fuel</strong> — Warm, moist air from the Gulf of Mexico</p>
+            <p>2. <strong>A Trigger</strong> — Cold air colliding with warm air (the "front")</p>
+            <p>3. <strong>Spin</strong> — Changing wind patterns that cause rotation</p>
+            <p style="margin-top: 1rem;">The "spin" factor is highest in spring and fall when Earth's tilt is changing fastest. That's why tornado season peaks in April-May, not in the hottest months.</p>
+            <p style="margin-top: 1rem;">Summer has plenty of heat but almost no spin — you get pop-up thunderstorms, not organized tornadoes.</p>
+        </div>
 
         <footer>
-            <div class="stats-row">
-                <div class="stat">
-                    <div class="stat-value">17,632</div>
-                    <div class="stat-label">Bayes Factor</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-value">99.9%</div>
-                    <div class="stat-label">Posterior Probability</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-value">100%</div>
-                    <div class="stat-label">Validation Pass Rate</div>
-                </div>
-            </div>
-            <p>DSO Weather Model v1.0 | © 2026 Joe Garrett | VaultSync Solutions</p>
-            <p style="margin-top: 0.5rem; font-size: 0.85rem;">
-                Part of the Drag-Scale-Object (DSO) Unified Field Theory
-            </p>
+            Powered by DSO Weather Model<br>
+            <a href="technical.html">View Technical Details</a>
         </footer>
     </div>
 
     <script>
-        // DSO Weather Engine (Embedded)
-        class DSOWeatherEngine {
-            constructor() {
-                this.PHI = (1 + Math.sqrt(5)) / 2;
-                this.EARTH_TILT = 23.44;
-                this.DAYS_PER_YEAR = 365.25;
-                this.SPRING_EQUINOX_DOY = 80;
-                this.GULF_SST_BASELINE = 26.0;
-                this.GULF_SST_CURRENT = 27.0;
-                this.WARMING_COEFFICIENT = 1.0;
-                this.ARCTIC_DAMPING = 0.3;
+        // Simplified DSO Engine
+        const regions = {
+            'tornado_alley':   { lat: 36, name: 'Oklahoma / Kansas', fuel: 0.80, gradient: 1.00 },
+            'dixie_alley':     { lat: 34, name: 'Arkansas / Tennessee', fuel: 0.90, gradient: 1.00 },
+            'southern_plains': { lat: 33, name: 'Texas', fuel: 0.85, gradient: 0.90 },
+            'midwest':         { lat: 40, name: 'Missouri / Illinois', fuel: 0.65, gradient: 0.80 },
+            'southeast':       { lat: 33, name: 'Georgia / Alabama', fuel: 0.85, gradient: 0.75 },
+            'gulf_coast':      { lat: 30, name: 'Gulf Coast', fuel: 1.00, gradient: 0.60 },
+            'northern_plains': { lat: 45, name: 'Dakotas / Minnesota', fuel: 0.45, gradient: 0.50 },
+            'great_lakes':     { lat: 44, name: 'Great Lakes', fuel: 0.40, gradient: 0.60 },
+            'northeast':       { lat: 42, name: 'Pennsylvania / NY', fuel: 0.40, gradient: 0.40 },
+            'new_england':     { lat: 43, name: 'New England', fuel: 0.35, gradient: 0.55 }
+        };
 
-                this.REGIONAL_FUEL = {
-                    'tornado_alley':   { lat: 36, fuel: 0.80, gradient: 1.00, name: 'Tornado Alley' },
-                    'dixie_alley':     { lat: 34, fuel: 0.90, gradient: 1.00, name: 'Dixie Alley' },
-                    'midwest':         { lat: 40, fuel: 0.65, gradient: 0.80, name: 'Midwest' },
-                    'southern_plains': { lat: 33, fuel: 0.85, gradient: 0.90, name: 'Southern Plains' },
-                    'northern_plains': { lat: 45, fuel: 0.45, gradient: 0.50, name: 'Northern Plains' },
-                    'gulf_coast':      { lat: 30, fuel: 1.00, gradient: 0.60, name: 'Gulf Coast' },
-                    'southeast':       { lat: 33, fuel: 0.85, gradient: 0.75, name: 'Southeast' },
-                    'northeast':       { lat: 42, fuel: 0.40, gradient: 0.40, name: 'Northeast' }
-                };
-            }
-
-            getCatalyst(dayOfYear) {
-                const shifted = dayOfYear - this.SPRING_EQUINOX_DOY;
-                return Math.abs(Math.cos((2 * Math.PI * shifted) / this.DAYS_PER_YEAR));
-            }
-
-            getSolarAngle(lat, dayOfYear) {
-                const latRad = (lat * Math.PI) / 180;
-                const declination = this.EARTH_TILT * Math.sin(
-                    (2 * Math.PI * (dayOfYear - 81)) / this.DAYS_PER_YEAR
-                );
-                const decRad = (declination * Math.PI) / 180;
-                const solarElevation = Math.asin(
-                    Math.sin(latRad) * Math.sin(decRad) + 
-                    Math.cos(latRad) * Math.cos(decRad)
-                );
-                return Math.max(0, Math.sin(solarElevation));
-            }
-
-            getEFuel(region, climateOffset = 0) {
-                const base = this.REGIONAL_FUEL[region]?.fuel || 0.5;
-                const warming = this.GULF_SST_CURRENT - this.GULF_SST_BASELINE + climateOffset;
-                return Math.min(1.0, base * (1 + this.WARMING_COEFFICIENT * warming * 0.1));
-            }
-
-            getGradient(region, climateOffset = 0) {
-                const base = this.REGIONAL_FUEL[region]?.gradient || 0.5;
-                const arcticWarming = climateOffset * this.ARCTIC_DAMPING;
-                return Math.max(0, base * (1 - arcticWarming * 0.1));
-            }
-
-            infer(region, dayOfYear, climateOffset = 0) {
-                const regionData = this.REGIONAL_FUEL[region];
-                const lat = regionData.lat;
-                const fuel = this.getEFuel(region, climateOffset);
-                const gradient = this.getGradient(region, climateOffset);
-                const catalyst = this.getCatalyst(dayOfYear);
-                const solarAngle = this.getSolarAngle(lat, dayOfYear);
-
-                const probability = fuel * catalyst * solarAngle;
-                const volatility = gradient * catalyst * solarAngle;
-                const danger = fuel * gradient * Math.pow(catalyst, 2) * Math.pow(solarAngle, 2);
-
-                let type = 'THUNDERSTORM';
-                let prob = fuel * solarAngle * 0.5;
-                let mechanism = 'Solar heating + moisture → convection';
-
-                if (gradient > 0.70 && catalyst > 0.60 && volatility > 0.40) {
-                    type = 'TORNADO';
-                    prob = volatility;
-                    mechanism = 'Maximum gradient × catalyst → rotational discharge';
-                } else if (fuel > 0.75 && catalyst < 0.35 && gradient < 0.50) {
-                    type = 'DERECHO';
-                    prob = Math.pow(fuel, 2) * (1 - catalyst);
-                    mechanism = 'No rotation driver → linear wind discharge';
-                } else if (gradient > 0.50 && catalyst > 0.40 && solarAngle < 0.35) {
-                    type = 'BLIZZARD';
-                    prob = gradient * catalyst * (1 - solarAngle);
-                    mechanism = 'Cold-side gradient dominance';
-                } else if (gradient > 0.30 && fuel > 0.40 && solarAngle > 0.30) {
-                    type = 'SEVERE_THUNDERSTORM';
-                    prob = fuel * gradient * solarAngle;
-                    mechanism = 'Gradient-driven updraft/downdraft differential';
-                }
-
-                return {
-                    fuel, gradient, catalyst, solarAngle,
-                    probability, volatility, danger,
-                    type, prob, mechanism
-                };
-            }
-
-            dayToDate(day) {
-                const date = new Date(2024, 0, 1);
-                date.setDate(day);
-                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            }
-
-            getSeason(day) {
-                if (day >= 80 && day < 172) return 'Spring';
-                if (day >= 172 && day < 266) return 'Summer';
-                if (day >= 266 && day < 355) return 'Fall';
-                return 'Winter';
-            }
+        function getCatalyst(day) {
+            const shifted = day - 80; // Spring equinox
+            return Math.abs(Math.cos((2 * Math.PI * shifted) / 365));
         }
 
-        // Initialize
-        const engine = new DSOWeatherEngine();
-
-        // Build Catalyst Chart
-        function buildCatalystChart() {
-            const container = document.getElementById('catalystChart');
-            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-            const days = [15, 46, 75, 105, 135, 166, 196, 227, 258, 288, 319, 349];
-
-            days.forEach((day, i) => {
-                const cat = engine.getCatalyst(day);
-                const bar = document.createElement('div');
-                bar.className = 'chart-bar';
-                if (cat > 0.9) bar.className += ' peak';
-                if (cat < 0.2) bar.className += ' low';
-                
-                bar.style.left = `${i * 8.33}%`;
-                bar.style.height = `${cat * 100}%`;
-                
-                bar.innerHTML = `
-                    <span class="chart-value">${cat.toFixed(2)}</span>
-                    <span class="chart-label">${months[i]}</span>
-                `;
-                
-                container.appendChild(bar);
-            });
+        function getSolarAngle(lat, day) {
+            const latRad = (lat * Math.PI) / 180;
+            const declination = 23.44 * Math.sin((2 * Math.PI * (day - 81)) / 365);
+            const decRad = (declination * Math.PI) / 180;
+            const elevation = Math.asin(
+                Math.sin(latRad) * Math.sin(decRad) + 
+                Math.cos(latRad) * Math.cos(decRad)
+            );
+            return Math.max(0, Math.sin(elevation));
         }
 
-        // Update prediction
-        function updatePrediction() {
-            const region = document.getElementById('regionSelect').value;
+        function dayToDate(day) {
+            const date = new Date(2024, 0, 1);
+            date.setDate(day);
+            return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+        }
+
+        function getSeason(day) {
+            if (day >= 80 && day < 172) return 'spring';
+            if (day >= 172 && day < 266) return 'summer';
+            if (day >= 266 && day < 355) return 'fall';
+            return 'winter';
+        }
+
+        function updateForecast() {
+            const regionKey = document.getElementById('regionSelect').value;
             const day = parseInt(document.getElementById('daySlider').value);
-            const climate = parseFloat(document.getElementById('climateSlider').value);
-
-            document.getElementById('dayDisplay').textContent = day;
-            document.getElementById('dateDisplay').textContent = engine.dayToDate(day);
-            document.getElementById('climateDisplay').textContent = climate;
-
-            const result = engine.infer(region, day, climate);
-
-            // Update factor values
-            const colorValue = (el, val) => {
-                el.textContent = val.toFixed(2);
-                el.className = 'result-value';
-                if (val > 0.7) el.classList.add('high');
-                else if (val > 0.4) el.classList.add('medium');
-                else el.classList.add('low');
-            };
-
-            colorValue(document.getElementById('fuelValue'), result.fuel);
-            colorValue(document.getElementById('gradientValue'), result.gradient);
-            colorValue(document.getElementById('catalystValue'), result.catalyst);
-            colorValue(document.getElementById('solarValue'), result.solarAngle);
-            colorValue(document.getElementById('probValue'), result.probability);
-            colorValue(document.getElementById('volValue'), result.volatility);
-            colorValue(document.getElementById('dangerValue'), result.danger);
-
-            document.getElementById('seasonValue').textContent = engine.getSeason(day);
-
-            document.getElementById('predictionType').textContent = result.type;
-            document.getElementById('predictionProb').textContent = (result.prob * 100).toFixed(1) + '%';
-            document.getElementById('predictionMech').textContent = result.mechanism;
-
-            // Update regional grid
-            updateRegionalGrid(day, climate);
+            const region = regions[regionKey];
+            
+            const catalyst = getCatalyst(day);
+            const solar = getSolarAngle(region.lat, day);
+            const fuel = region.fuel;
+            const gradient = region.gradient;
+            
+            const danger = fuel * gradient * catalyst * catalyst * solar * solar;
+            const inversionRatio = catalyst / (solar + 0.1);
+            const season = getSeason(day);
+            
+            // Update date
+            document.getElementById('dateDisplay').textContent = dayToDate(day);
+            
+            // Update season indicator
+            ['winter', 'spring', 'summer', 'fall'].forEach(s => {
+                const el = document.getElementById('season-' + s);
+                el.classList.remove('active', 'peak');
+                if (s === season) {
+                    el.classList.add('active');
+                    if ((s === 'spring' || s === 'fall') && catalyst > 0.7) {
+                        el.classList.add('peak');
+                    }
+                }
+            });
+            
+            // Determine risk level and threat type
+            let riskLevel, riskEmoji, riskDesc, threatType, threatIcon, threatClass, threatDetail;
+            let energyLevel, rotationLevel, stormType;
+            
+            // BOMB CYCLONE (inversion)
+            if (inversionRatio > 1.2 && catalyst > 0.5 && solar < 0.6) {
+                riskLevel = danger > 0.3 ? 'HIGH' : 'MODERATE';
+                riskEmoji = '🌀';
+                riskDesc = 'Winter storm pattern. Rapid pressure drops possible.';
+                threatType = 'Bomb Cyclone Risk';
+                threatIcon = '🌀';
+                threatClass = 'bomb';
+                threatDetail = 'Conditions favor rapid storm intensification. Strong winds and heavy precipitation likely.';
+                energyLevel = 'Moderate - Cold season energy';
+                rotationLevel = 'High - Strong jet stream';
+                stormType = 'Intense low pressure systems';
+            }
+            // TORNADO
+            else if (gradient > 0.7 && catalyst > 0.6 && danger > 0.3) {
+                riskLevel = danger > 0.5 ? 'EXTREME' : 'HIGH';
+                riskEmoji = '🌪️';
+                riskDesc = 'Peak severe weather season. Stay alert for watches and warnings.';
+                threatType = 'Tornado Risk';
+                threatIcon = '🌪️';
+                threatClass = 'tornado';
+                threatDetail = 'All ingredients are in place for rotating storms. This is prime tornado season for your area.';
+                energyLevel = fuel > 0.7 ? 'High - Gulf moisture available' : 'Moderate - Some moisture';
+                rotationLevel = 'High - Peak storm season';
+                stormType = 'Supercells and tornadoes possible';
+            }
+            // SEVERE STORMS
+            else if (danger > 0.1 && catalyst > 0.3) {
+                riskLevel = 'MODERATE';
+                riskEmoji = '⛈️';
+                riskDesc = 'Scattered severe storms possible. Brief tornadoes can\'t be ruled out.';
+                threatType = 'Severe Storm Risk';
+                threatIcon = '⛈️';
+                threatClass = 'severe';
+                threatDetail = 'Some ingredients present for organized storms. Large hail and damaging winds are the main threats.';
+                energyLevel = fuel > 0.5 ? 'Moderate - Unstable air' : 'Low to moderate';
+                rotationLevel = catalyst > 0.5 ? 'Moderate - Some spin available' : 'Low - Limited rotation';
+                stormType = 'Strong to severe thunderstorms';
+            }
+            // SUMMER LULL
+            else if (solar > 0.8 && catalyst < 0.2) {
+                riskLevel = 'LOW';
+                riskEmoji = '🌤️';
+                riskDesc = 'Summer pattern. Isolated afternoon storms, but nothing organized.';
+                threatType = 'Pop-up Storms';
+                threatIcon = '⛅';
+                threatClass = 'low';
+                threatDetail = 'Plenty of heat but no spin. Typical summer storms — brief heavy rain and lightning, but rarely severe.';
+                energyLevel = 'High - Hot and humid';
+                rotationLevel = 'Very low - Summer lull';
+                stormType = 'Isolated afternoon thunderstorms';
+            }
+            // WINTER QUIET
+            else if (solar < 0.5 && catalyst < 0.3) {
+                riskLevel = 'LOW';
+                riskEmoji = '❄️';
+                riskDesc = 'Deep winter pattern. Quiet weather, occasional light snow.';
+                threatType = 'Winter Weather';
+                threatIcon = '❄️';
+                threatClass = 'winter';
+                threatDetail = 'Stable pattern with limited energy. Any precipitation will be light.';
+                energyLevel = 'Low - Cold and stable';
+                rotationLevel = 'Low - Quiet pattern';
+                stormType = 'Light snow or flurries';
+            }
+            // DEFAULT
+            else {
+                riskLevel = 'LOW';
+                riskEmoji = '☁️';
+                riskDesc = 'No significant severe weather expected.';
+                threatType = 'General Weather';
+                threatIcon = '☁️';
+                threatClass = 'low';
+                threatDetail = 'Conditions don\'t favor organized severe weather at this time.';
+                energyLevel = fuel > 0.5 ? 'Moderate' : 'Low';
+                rotationLevel = catalyst > 0.3 ? 'Moderate' : 'Low';
+                stormType = 'Routine weather';
+            }
+            
+            // Apply to UI
+            document.getElementById('riskEmoji').textContent = riskEmoji;
+            document.getElementById('riskLabel').textContent = riskLevel + ' RISK';
+            document.getElementById('riskLabel').className = 'risk-label ' + riskLevel.toLowerCase();
+            document.getElementById('riskDescription').textContent = riskDesc;
+            
+            document.getElementById('threatIcon').textContent = threatIcon;
+            document.getElementById('threatName').textContent = threatType;
+            document.getElementById('threatDetail').textContent = threatDetail;
+            document.getElementById('threatBox').className = 'threat-box ' + threatClass;
+            
+            document.getElementById('energyLevel').textContent = energyLevel;
+            document.getElementById('rotationLevel').textContent = rotationLevel;
+            document.getElementById('stormType').textContent = stormType;
+            document.getElementById('peakHours').textContent = solar > 0.5 ? '3 PM - 7 PM' : 'Anytime (frontal)';
         }
 
-        // Update regional grid
-        function updateRegionalGrid(day, climate) {
-            const grid = document.getElementById('regionGrid');
-            grid.innerHTML = '';
-
-            Object.entries(engine.REGIONAL_FUEL).forEach(([key, data]) => {
-                const result = engine.infer(key, day, climate);
-                const card = document.createElement('div');
-                card.className = 'region-card';
-                
-                let borderColor = 'var(--accent-green)';
-                if (result.danger > 0.4) borderColor = 'var(--accent-red)';
-                else if (result.danger > 0.2) borderColor = 'var(--accent-gold)';
-                card.style.borderLeftColor = borderColor;
-
-                card.innerHTML = `
-                    <div class="region-name">${data.name}</div>
-                    <div class="region-stats">
-                        Danger: ${result.danger.toFixed(3)} | ${result.type}
-                    </div>
-                    <div class="danger-bar">
-                        <div class="danger-fill" style="width: ${Math.min(100, result.danger * 150)}%"></div>
-                    </div>
-                `;
-                grid.appendChild(card);
-            });
+        function toggleExplanation() {
+            const el = document.getElementById('explanation');
+            el.classList.toggle('show');
         }
 
         // Event listeners
-        document.getElementById('regionSelect').addEventListener('change', updatePrediction);
-        document.getElementById('daySlider').addEventListener('input', updatePrediction);
-        document.getElementById('climateSlider').addEventListener('input', updatePrediction);
+        document.getElementById('regionSelect').addEventListener('change', updateForecast);
+        document.getElementById('daySlider').addEventListener('input', updateForecast);
 
         // Initialize
-        buildCatalystChart();
-        updatePrediction();
+        updateForecast();
     </script>
 </body>
 </html>

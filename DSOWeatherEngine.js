@@ -33,16 +33,22 @@ class DSOWeatherEngine {
     
     // Regional E-Fuel Access (distance from Gulf in relative units)
     this.REGIONAL_FUEL = {
-      'gulf_coast':     { lat: 30, fuel: 1.00, gradient: 0.60 },
-      'dixie_alley':    { lat: 34, fuel: 0.90, gradient: 1.00 },
-      'tornado_alley':  { lat: 36, fuel: 0.80, gradient: 1.00 },
-      'southern_plains': { lat: 33, fuel: 0.85, gradient: 0.90 },
-      'midwest':        { lat: 40, fuel: 0.65, gradient: 0.80 },
-      'northern_plains': { lat: 45, fuel: 0.45, gradient: 0.50 },
-      'northeast':      { lat: 42, fuel: 0.40, gradient: 0.40 },
-      'southeast':      { lat: 33, fuel: 0.85, gradient: 0.75 },
-      'pacific_nw':     { lat: 47, fuel: 0.30, gradient: 0.30 },
-      'southwest':      { lat: 34, fuel: 0.25, gradient: 0.20 }
+      'gulf_coast':     { lat: 30, fuel: 1.00, gradient: 0.60, name: 'Gulf Coast' },
+      'dixie_alley':    { lat: 34, fuel: 0.90, gradient: 1.00, name: 'Dixie Alley' },
+      'tornado_alley':  { lat: 36, fuel: 0.80, gradient: 1.00, name: 'Tornado Alley' },
+      'southern_plains': { lat: 33, fuel: 0.85, gradient: 0.90, name: 'Southern Plains' },
+      'midwest':        { lat: 40, fuel: 0.65, gradient: 0.80, name: 'Midwest' },
+      'northern_plains': { lat: 45, fuel: 0.45, gradient: 0.50, name: 'Northern Plains' },
+      'northeast':      { lat: 42, fuel: 0.40, gradient: 0.40, name: 'Northeast' },
+      'southeast':      { lat: 33, fuel: 0.85, gradient: 0.75, name: 'Southeast' },
+      'pacific_nw':     { lat: 47, fuel: 0.30, gradient: 0.30, name: 'Pacific NW' },
+      'southwest':      { lat: 34, fuel: 0.25, gradient: 0.20, name: 'Southwest' },
+      // Higher latitude regions for bomb cyclone analysis
+      'new_england':    { lat: 43, fuel: 0.35, gradient: 0.55, name: 'New England' },
+      'great_lakes':    { lat: 44, fuel: 0.40, gradient: 0.60, name: 'Great Lakes' },
+      'upper_midwest':  { lat: 46, fuel: 0.35, gradient: 0.55, name: 'Upper Midwest' },
+      'northern_rockies': { lat: 47, fuel: 0.25, gradient: 0.45, name: 'Northern Rockies' },
+      'alaska_se':      { lat: 58, fuel: 0.20, gradient: 0.70, name: 'SE Alaska' }
     };
     
     // Storm type thresholds
@@ -168,6 +174,157 @@ class DSOWeatherEngine {
    */
   getSolarPunch(lat, dayOfYear) {
     return this.getSolarAngle(lat, dayOfYear) * this.getCatalyst(dayOfYear);
+  }
+
+  /**
+   * Metabolic State / Inversion Detection
+   * 
+   * The INVERSION occurs when:
+   * - Solar angle is LOW (winter/high latitude, weak vertical heating)
+   * - Catalyst is HIGH (near equinox, strong tilt rate)
+   * 
+   * Result: Energy cannot discharge vertically (no convection)
+   *         Instead discharges HORIZONTALLY (surface kinetic)
+   *         
+   * This produces BOMB CYCLONES - rapid surface pressure drops
+   * driven by horizontal temperature gradients, not convection.
+   * 
+   * Key insight: The threshold depends on the RATIO of catalyst to solar.
+   * When catalyst dominates solar angle, you get horizontal discharge.
+   */
+  getMetabolicState(lat, dayOfYear, gradient) {
+    const alpha = this.getSolarAngle(lat, dayOfYear);  // Pure solar, no catalyst
+    const catalyst = this.getCatalyst(dayOfYear);       // dθ/dt
+    
+    // The INVERSION RATIO: catalyst / (alpha + 0.1)
+    // When this ratio > 1.5, the system "inverts" to horizontal mode
+    const inversionRatio = catalyst / (alpha + 0.1);
+    
+    // INVERSION MODE: Catalyst dominates over solar
+    // Occurs when: high catalyst, moderate-to-low solar
+    // Real-world: Late Oct-Nov, Feb-early Mar at mid-high latitudes
+    if (inversionRatio > 1.2 && catalyst > 0.5 && alpha < 0.6) {
+      const potential = gradient * catalyst * (1 - alpha);
+      
+      // Classify inversion intensity
+      let severity = 'MODERATE';
+      if (potential > 0.5) severity = 'EXTREME';
+      else if (potential > 0.3) severity = 'STRONG';
+      
+      return {
+        mode: 'INVERSION',
+        type: 'BOMB_CYCLONE',
+        potential: potential,
+        inversionRatio: inversionRatio,
+        behavior: 'Surface-Level Kinetic',
+        severity: severity,
+        mechanism: 'Catalyst/Solar ratio > 1.2 → Horizontal discharge',
+        conditions: {
+          solarAngle: alpha,
+          catalyst: catalyst,
+          gradient: gradient,
+          ratio: inversionRatio
+        }
+      };
+    }
+    
+    // STANDARD MODE: Solar dominates, adequate for vertical discharge
+    if (alpha > 0.5 && catalyst > 0.4) {
+      return {
+        mode: 'STANDARD',
+        type: 'CONVECTIVE',
+        potential: alpha * catalyst * gradient,
+        inversionRatio: inversionRatio,
+        behavior: 'Vertical Discharge',
+        mechanism: 'Solar dominates → Convective storms'
+      };
+    }
+    
+    // SUMMER MODE: High sun, low catalyst - disorganized
+    if (alpha > 0.7 && catalyst < 0.3) {
+      return {
+        mode: 'SUPPRESSED',
+        type: 'POP_UP',
+        potential: alpha * gradient * 0.3,
+        inversionRatio: inversionRatio,
+        behavior: 'Isolated Convection',
+        mechanism: 'High α but no catalyst → Disorganized'
+      };
+    }
+    
+    // WINTER MODE: Low sun, low catalyst (stable)
+    if (alpha < 0.5 && catalyst < 0.3) {
+      return {
+        mode: 'DORMANT',
+        type: 'STABLE',
+        potential: 0.1,
+        inversionRatio: inversionRatio,
+        behavior: 'Minimal Activity',
+        mechanism: 'Low α + Low catalyst → Stable'
+      };
+    }
+    
+    // TRANSITION: Mixed conditions
+    return {
+      mode: 'TRANSITION',
+      type: 'MIXED',
+      potential: alpha * catalyst * gradient,
+      inversionRatio: inversionRatio,
+      behavior: 'Variable',
+      mechanism: 'Transitional state'
+    };
+  }
+
+  /**
+   * Get all storm modes for a given day
+   * Shows both convective potential AND inversion potential
+   */
+  getFullForecast(region, dayOfYear, climateOffset = 0) {
+    const regionData = this.REGIONAL_FUEL[region];
+    if (!regionData) return { error: `Unknown region: ${region}` };
+    
+    const lat = regionData.lat;
+    const fuel = this.getEFuel(region, climateOffset);
+    const gradient = this.getGradient(region, climateOffset);
+    const catalyst = this.getCatalyst(dayOfYear);
+    const solarAngle = this.getSolarAngle(lat, dayOfYear);
+    
+    // Standard classification
+    const standard = this.classifyStorm(fuel, gradient, catalyst, solarAngle, lat);
+    
+    // Inversion check
+    const metabolic = this.getMetabolicState(lat, dayOfYear, gradient);
+    
+    return {
+      region,
+      date: this.dayOfYearToDate(dayOfYear),
+      latitude: lat,
+      
+      factors: {
+        fuel,
+        gradient,
+        catalyst,
+        solarAngle
+      },
+      
+      // Standard convective forecast
+      convective: {
+        prediction: standard.primary,
+        danger: standard.indices.danger,
+        volatility: standard.indices.volatility
+      },
+      
+      // Inversion / Bomb Cyclone forecast
+      inversion: metabolic,
+      
+      // Which mode dominates?
+      dominantMode: metabolic.mode === 'INVERSION' ? 'INVERSION' : 'CONVECTIVE',
+      
+      // Combined threat assessment
+      primaryThreat: metabolic.mode === 'INVERSION' && metabolic.potential > standard.indices.danger
+        ? metabolic.type
+        : standard.primary.type
+    };
   }
 
   // ═══════════════════════════════════════════════════════════════
