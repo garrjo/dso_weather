@@ -1274,7 +1274,7 @@
                     <label>Region</label>
                     <select id="regionSelect">
                         <option value="tornado_alley">Tornado Alley (OK, KS)</option>
-                        <option value="dixie_alley">Dixie Alley (AR, TN, MS)</option>
+                        <option value="dixie_alley" selected>Dixie Alley (AR, TN, MS)</option>
                         <option value="midwest">Midwest (MO, IL, IN)</option>
                         <option value="southern_plains">Southern Plains (TX)</option>
                         <option value="northern_plains">Northern Plains (ND, SD)</option>
@@ -2615,6 +2615,12 @@
         }
 
         // Initialize
+        // Set day slider to today's day of year
+        const today = new Date();
+        const startOfYear = new Date(today.getFullYear(), 0, 0);
+        const todayDOY = Math.floor((today - startOfYear) / (1000 * 60 * 60 * 24));
+        document.getElementById('daySlider').value = todayDOY;
+
         buildCatalystChart();
         updatePrediction();
         updateArkansasPanel();
