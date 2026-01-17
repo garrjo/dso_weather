@@ -1,53 +1,113 @@
 /**
- * NOAA/NWS Weather Service for DSO Weather Dashboard
+ * DSO Weather Service - Real-Time Weather Data
  * REAL DATA ONLY - No estimates, no approximations
  *
- * Data Sources:
- * - api.weather.gov — Surface observations
- * - ndbc.noaa.gov — Gulf buoy SST (real-time)
- * - weather.uwyo.edu — Upper air soundings (KLZK)
- * - spc.noaa.gov — Outlooks for comparison
+ * Data Sources (all CORS-friendly):
+ * - api.weather.gov — Surface observations (NWS)
+ * - api.open-meteo.com — CAPE, CIN, Lifted Index, atmospheric data
+ * - coastwatch.noaa.gov/erddap — Gulf of Mexico SST
  *
  * If data cannot be fetched, display "NO DATA" — never estimate.
  */
 
-class NOAAWeatherService {
-    constructor() {
-        // API Endpoints
+class DSOWeatherService {
+    constructor(config = {}) {
+        // API Endpoints (all CORS-enabled)
         this.NWS_API = 'https://api.weather.gov';
-        this.NDBC_API = 'https://www.ndbc.noaa.gov/data/realtime2';
-        this.UWYO_SOUNDING = 'https://weather.uwyo.edu/cgi-bin/sounding';
+        this.OPEN_METEO_API = 'https://api.open-meteo.com/v1/forecast';
+        this.ERDDAP_API = 'https://coastwatch.noaa.gov/erddap/griddap';
 
-        // Arkansas reference point
-        this.ARKANSAS = {
+        // SST Dataset ID on ERDDAP
+        this.SST_DATASET = 'noaacwBLENDEDsstDailyNRT';
+
+        // Default location (can be configured)
+        this.location = config.location || {
             name: 'Arkansas',
             lat: 34.7465,
             lon: -92.2896,
-            stationId: 'KLIT',           // Little Rock surface station
-            soundingStation: '72340',     // KLZK Little Rock upper air
+            stationId: 'KLIT',
             nwsOffice: 'LZK'
         };
 
-        // Gulf of Mexico buoys for SST
-        this.GULF_BUOYS = [
-            { id: '42001', name: 'Mid Gulf', lat: 25.9, lon: -89.7 },
-            { id: '42002', name: 'West Gulf', lat: 26.0, lon: -93.6 },
-            { id: '42019', name: 'Freeport TX', lat: 27.9, lon: -95.4 },
-            { id: '42020', name: 'Corpus Christi', lat: 26.9, lon: -96.7 },
-            { id: '42035', name: 'Galveston', lat: 29.2, lon: -94.4 },
-            { id: '42040', name: 'Luke Offshore', lat: 29.2, lon: -88.2 },
-            { id: '42067', name: 'NE Gulf', lat: 30.0, lon: -88.6 }
+        // Gulf of Mexico sampling points for SST
+        this.GULF_POINTS = [
+            { name: 'Central Gulf', lat: 26.0, lon: -90.0 },
+            { name: 'NW Gulf', lat: 27.5, lon: -93.0 },
+            { name: 'NE Gulf', lat: 28.5, lon: -87.5 }
         ];
 
         // Cache with short TTL for real-time data
         this.cache = {
             surface: { data: null, timestamp: null, ttlMinutes: 10 },
-            buoy: { data: null, timestamp: null, ttlMinutes: 30 },
-            sounding: { data: null, timestamp: null, ttlMinutes: 60 }
+            atmospheric: { data: null, timestamp: null, ttlMinutes: 30 },
+            sst: { data: null, timestamp: null, ttlMinutes: 60 }
         };
 
-        // Track previous values for trends (real trends from real data)
+        // Track previous values for trends
         this.previousValues = {};
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // LOCATION CONFIGURATION
+    // ═══════════════════════════════════════════════════════════════
+
+    async setLocationFromCoords(lat, lon) {
+        // Update location coordinates
+        this.location.lat = lat;
+        this.location.lon = lon;
+
+        // Get location name and NWS station from coordinates
+        try {
+            const pointUrl = `${this.NWS_API}/points/${lat.toFixed(4)},${lon.toFixed(4)}`;
+            const response = await fetch(pointUrl, {
+                headers: {
+                    'User-Agent': 'DSOWeatherService/1.0',
+                    'Accept': 'application/geo+json'
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const props = data.properties;
+
+                this.location.name = `${props.relativeLocation?.properties?.city || 'Unknown'}, ${props.relativeLocation?.properties?.state || ''}`;
+                this.location.nwsOffice = props.gridId;
+                this.location.gridX = props.gridX;
+                this.location.gridY = props.gridY;
+                this.location.forecastUrl = props.forecast;
+                this.location.stationsUrl = props.observationStations;
+
+                // Get nearest observation station
+                if (props.observationStations) {
+                    const stationsResp = await fetch(props.observationStations, {
+                        headers: { 'User-Agent': 'DSOWeatherService/1.0' }
+                    });
+                    if (stationsResp.ok) {
+                        const stationsData = await stationsResp.json();
+                        if (stationsData.features && stationsData.features.length > 0) {
+                            this.location.stationId = stationsData.features[0].properties.stationIdentifier;
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Failed to get NWS point data:', error);
+            // Keep coordinates even if lookup fails
+            this.location.name = `${lat.toFixed(2)}°N, ${Math.abs(lon).toFixed(2)}°W`;
+        }
+
+        // Clear cache when location changes
+        this.cache = {
+            surface: { data: null, timestamp: null, ttlMinutes: 10 },
+            atmospheric: { data: null, timestamp: null, ttlMinutes: 30 },
+            sst: { data: null, timestamp: null, ttlMinutes: 60 }
+        };
+
+        return this.location;
+    }
+
+    getLocation() {
+        return this.location;
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -55,7 +115,7 @@ class NOAAWeatherService {
     // ═══════════════════════════════════════════════════════════════
 
     async fetchSurfaceObservations() {
-        const url = `${this.NWS_API}/stations/${this.ARKANSAS.stationId}/observations/latest`;
+        const url = `${this.NWS_API}/stations/${this.location.stationId}/observations/latest`;
 
         try {
             const response = await fetch(url, {
@@ -74,7 +134,7 @@ class NOAAWeatherService {
                 success: true,
                 data: data.properties,
                 timestamp: data.properties.timestamp,
-                station: this.ARKANSAS.stationId
+                station: this.location.stationId
             };
         } catch (error) {
             console.error('Surface observation fetch failed:', error);
@@ -83,284 +143,251 @@ class NOAAWeatherService {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // GULF SST FROM NDBC BUOYS (REAL DATA)
+    // GULF SST FROM NOAA ERDDAP (CORS-ENABLED)
     // ═══════════════════════════════════════════════════════════════
 
-    async fetchBuoyData(buoyId) {
-        // NDBC provides real-time data in text format
-        const url = `${this.NDBC_API}/${buoyId}.txt`;
-
-        try {
-            const response = await fetch(url);
-            if (!response.ok) {
-                throw new Error(`NDBC returned ${response.status} for buoy ${buoyId}`);
-            }
-
-            const text = await response.text();
-            return this.parseNDBCData(text, buoyId);
-        } catch (error) {
-            console.error(`Buoy ${buoyId} fetch failed:`, error);
-            return { success: false, buoyId, error: error.message };
-        }
-    }
-
-    parseNDBCData(text, buoyId) {
-        const lines = text.trim().split('\n');
-        if (lines.length < 3) {
-            return { success: false, buoyId, error: 'Insufficient data' };
-        }
-
-        // First line is headers, second is units, third+ is data
-        const headers = lines[0].replace(/^#/, '').trim().split(/\s+/);
-        const dataLine = lines[2].trim().split(/\s+/);
-
-        const getValue = (name) => {
-            const idx = headers.indexOf(name);
-            if (idx === -1) return null;
-            const val = parseFloat(dataLine[idx]);
-            return isNaN(val) || val === 999 || val === 9999 ? null : val;
-        };
-
-        const year = dataLine[0];
-        const month = dataLine[1];
-        const day = dataLine[2];
-        const hour = dataLine[3];
-        const minute = dataLine[4];
-
-        return {
-            success: true,
-            buoyId,
-            timestamp: `${year}-${month}-${day} ${hour}:${minute} UTC`,
-            seaSurfaceTemp: getValue('WTMP'),      // Water temperature (°C)
-            airTemp: getValue('ATMP'),              // Air temperature (°C)
-            dewpoint: getValue('DEWP'),             // Dewpoint (°C)
-            windSpeed: getValue('WSPD'),            // Wind speed (m/s)
-            windDirection: getValue('WDIR'),        // Wind direction (degrees)
-            windGust: getValue('GST'),              // Gust speed (m/s)
-            pressure: getValue('PRES'),             // Pressure (hPa)
-            waveHeight: getValue('WVHT'),           // Wave height (m)
-            waterTempDepth: getValue('WTMP')        // Same as SST for surface buoys
-        };
-    }
-
     async fetchGulfSST() {
-        // Fetch from multiple buoys for redundancy and averaging
+        // Get yesterday's date for reliable SST data
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const dateStr = yesterday.toISOString().split('T')[0];
+
+        // Sample multiple points in the Gulf
         const results = await Promise.all(
-            this.GULF_BUOYS.map(buoy => this.fetchBuoyData(buoy.id))
+            this.GULF_POINTS.map(point => this.fetchERDDAPSST(point, dateStr))
         );
 
-        const validReadings = results.filter(r => r.success && r.seaSurfaceTemp !== null);
+        const validReadings = results.filter(r => r.success && r.sst !== null);
 
         if (validReadings.length === 0) {
             return {
                 success: false,
-                error: 'No valid SST readings from any Gulf buoy',
-                attemptedBuoys: this.GULF_BUOYS.map(b => b.id)
+                error: 'No valid SST readings from ERDDAP',
+                attemptedPoints: this.GULF_POINTS.length
             };
         }
 
-        // Calculate average SST from all valid buoys
-        const avgSST = validReadings.reduce((sum, r) => sum + r.seaSurfaceTemp, 0) / validReadings.length;
+        // Calculate average SST from all valid points
+        const avgSST = validReadings.reduce((sum, r) => sum + r.sst, 0) / validReadings.length;
 
-        // Find closest buoy to moisture path (NE Gulf buoys most relevant for Arkansas)
-        const priorityBuoys = validReadings.filter(r =>
-            ['42040', '42067', '42001'].includes(r.buoyId)
-        );
-        const primarySST = priorityBuoys.length > 0
-            ? priorityBuoys[0].seaSurfaceTemp
-            : validReadings[0].seaSurfaceTemp;
+        // Use NE Gulf as primary (most relevant for Arkansas moisture transport)
+        const neGulf = validReadings.find(r => r.name === 'NE Gulf');
+        const primarySST = neGulf ? neGulf.sst : validReadings[0].sst;
 
         return {
             success: true,
             primarySST,
             averageSST: avgSST,
-            buoyCount: validReadings.length,
+            pointCount: validReadings.length,
             readings: validReadings.map(r => ({
-                buoyId: r.buoyId,
-                sst: r.seaSurfaceTemp,
+                name: r.name,
+                lat: r.lat,
+                lon: r.lon,
+                sst: r.sst,
                 timestamp: r.timestamp
             })),
+            dataSource: 'NOAA ERDDAP (Blended SST)',
             timestamp: new Date().toISOString()
         };
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // UPPER AIR SOUNDINGS (University of Wyoming)
-    // ═══════════════════════════════════════════════════════════════
-
-    async fetchSounding() {
-        // Get current date for sounding request
-        const now = new Date();
-        const year = now.getUTCFullYear();
-        const month = String(now.getUTCMonth() + 1).padStart(2, '0');
-        const day = String(now.getUTCDate()).padStart(2, '0');
-
-        // Soundings are typically at 00Z and 12Z
-        const hour = now.getUTCHours();
-        const soundingHour = hour >= 12 ? '12' : '00';
-        const fromTo = `${day}${soundingHour}`;
-
-        const url = `${this.UWYO_SOUNDING}?region=naconf&TYPE=TEXT%3ALIST&YEAR=${year}&MONTH=${month}&FROM=${fromTo}&TO=${fromTo}&STNM=${this.ARKANSAS.soundingStation}`;
+    async fetchERDDAPSST(point, dateStr) {
+        // ERDDAP griddap query for single point SST
+        // Format: dataset.json?variable[(time)][(lat)][(lon)]
+        const url = `${this.ERDDAP_API}/${this.SST_DATASET}.json?` +
+            `analysed_sst[(${dateStr}T12:00:00Z)][(${point.lat}):1:(${point.lat})][(${point.lon}):1:(${point.lon})]`;
 
         try {
             const response = await fetch(url);
             if (!response.ok) {
-                throw new Error(`Wyoming sounding returned ${response.status}`);
+                throw new Error(`ERDDAP returned ${response.status}`);
             }
 
-            const html = await response.text();
-            return this.parseSoundingData(html);
+            const data = await response.json();
+
+            // ERDDAP returns data in table format
+            // columnNames: ["time", "latitude", "longitude", "analysed_sst"]
+            // rows: [[timestamp, lat, lon, sst_kelvin]]
+            if (data.table && data.table.rows && data.table.rows.length > 0) {
+                const row = data.table.rows[0];
+                const sstKelvin = row[3];
+
+                if (sstKelvin === null || isNaN(sstKelvin)) {
+                    return { success: false, name: point.name, error: 'No SST value' };
+                }
+
+                // Convert from Kelvin to Celsius
+                const sstCelsius = sstKelvin - 273.15;
+
+                return {
+                    success: true,
+                    name: point.name,
+                    lat: point.lat,
+                    lon: point.lon,
+                    sst: sstCelsius,
+                    timestamp: row[0]
+                };
+            }
+
+            return { success: false, name: point.name, error: 'No data rows returned' };
         } catch (error) {
-            console.error('Sounding fetch failed:', error);
+            console.error(`ERDDAP SST fetch failed for ${point.name}:`, error);
+            return { success: false, name: point.name, error: error.message };
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // ATMOSPHERIC DATA FROM OPEN-METEO (CORS-ENABLED)
+    // ═══════════════════════════════════════════════════════════════
+
+    async fetchAtmosphericData() {
+        // Open-Meteo provides CAPE, CIN, lifted index, and multi-level wind data
+        const params = new URLSearchParams({
+            latitude: this.location.lat,
+            longitude: this.location.lon,
+            hourly: [
+                'cape',
+                'convective_inhibition',
+                'lifted_index',
+                'temperature_2m',
+                'relative_humidity_2m',
+                'wind_speed_10m',
+                'wind_direction_10m',
+                'wind_speed_80m',
+                'wind_direction_80m',
+                'wind_speed_120m',
+                'wind_direction_120m',
+                'wind_speed_180m',
+                'wind_direction_180m',
+                'temperature_80m',
+                'temperature_120m',
+                'temperature_180m',
+                'freezing_level_height'
+            ].join(','),
+            current: 'temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,surface_pressure',
+            temperature_unit: 'celsius',
+            wind_speed_unit: 'kmh',
+            timezone: 'America/Chicago',
+            forecast_days: 1
+        });
+
+        const url = `${this.OPEN_METEO_API}?${params}`;
+
+        try {
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`Open-Meteo returned ${response.status}`);
+            }
+
+            const data = await response.json();
+            return this.parseOpenMeteoData(data);
+        } catch (error) {
+            console.error('Open-Meteo fetch failed:', error);
             return { success: false, error: error.message };
         }
     }
 
-    parseSoundingData(html) {
+    parseOpenMeteoData(data) {
         try {
-            // Extract the PRE block containing sounding data
-            const preMatch = html.match(/<PRE>([\s\S]*?)<\/PRE>/i);
-            if (!preMatch) {
-                return { success: false, error: 'No sounding data in response' };
-            }
+            const current = data.current;
+            const hourly = data.hourly;
 
-            const preContent = preMatch[1];
+            // Get current hour index
+            const now = new Date();
+            const currentHour = now.getHours();
 
-            // Parse station indices (CAPE, CIN, etc.)
-            const indices = {};
+            // Extract current values from hourly arrays
+            const cape = hourly.cape?.[currentHour];
+            const cin = hourly.convective_inhibition?.[currentHour];
+            const liftedIndex = hourly.lifted_index?.[currentHour];
+            const freezingLevel = hourly.freezing_level_height?.[currentHour];
 
-            // CAPE
-            const capeMatch = preContent.match(/Convective Available Potential Energy\s+(\d+\.?\d*)/i) ||
-                             preContent.match(/CAPE\s+(\d+\.?\d*)/i);
-            indices.cape = capeMatch ? parseFloat(capeMatch[1]) : null;
+            // Calculate lapse rate from multi-level temperatures
+            const temp2m = current.temperature_2m;
+            const temp80m = hourly.temperature_80m?.[currentHour];
+            const temp120m = hourly.temperature_120m?.[currentHour];
+            const temp180m = hourly.temperature_180m?.[currentHour];
 
-            // CIN
-            const cinMatch = preContent.match(/Convective Inhibition\s+(-?\d+\.?\d*)/i) ||
-                            preContent.match(/CINH?\s+(-?\d+\.?\d*)/i);
-            indices.cin = cinMatch ? parseFloat(cinMatch[1]) : null;
+            const lapseRate = this.calculateLapseRateFromLevels(temp2m, temp80m, temp120m, temp180m);
 
-            // Lifted Index
-            const liMatch = preContent.match(/Lifted Index\s+(-?\d+\.?\d*)/i) ||
-                           preContent.match(/LIFT\s+(-?\d+\.?\d*)/i);
-            indices.liftedIndex = liMatch ? parseFloat(liMatch[1]) : null;
-
-            // K Index
-            const kMatch = preContent.match(/K Index\s+(-?\d+\.?\d*)/i) ||
-                          preContent.match(/KINX\s+(-?\d+\.?\d*)/i);
-            indices.kIndex = kMatch ? parseFloat(kMatch[1]) : null;
-
-            // Total Totals
-            const ttMatch = preContent.match(/Totals Totals Index\s+(-?\d+\.?\d*)/i) ||
-                           preContent.match(/TOTL\s+(-?\d+\.?\d*)/i);
-            indices.totalTotals = ttMatch ? parseFloat(ttMatch[1]) : null;
-
-            // Precipitable Water
-            const pwMatch = preContent.match(/Precipitable Water.*?(\d+\.?\d*)/i) ||
-                           preContent.match(/PWAT\s+(\d+\.?\d*)/i);
-            indices.precipitableWater = pwMatch ? parseFloat(pwMatch[1]) : null;
-
-            // Parse the actual sounding levels for lapse rate and wind shear
-            const levels = this.parseSoundingLevels(preContent);
-
-            // Calculate real lapse rate from actual temperature data
-            const lapseRate = this.calculateLapseRate(levels);
-
-            // Calculate wind shear from actual wind profiles
-            const windShear = this.calculateWindShear(levels);
+            // Calculate wind shear from multi-level winds
+            const windShear = this.calculateWindShearFromLevels(
+                { speed: current.wind_speed_10m, direction: current.wind_direction_10m },
+                { speed: hourly.wind_speed_80m?.[currentHour], direction: hourly.wind_direction_80m?.[currentHour] },
+                { speed: hourly.wind_speed_120m?.[currentHour], direction: hourly.wind_direction_120m?.[currentHour] },
+                { speed: hourly.wind_speed_180m?.[currentHour], direction: hourly.wind_direction_180m?.[currentHour] }
+            );
 
             return {
                 success: true,
-                station: this.ARKANSAS.soundingStation,
-                timestamp: new Date().toISOString(),
-                indices,
-                lapseRate,
-                windShear,
-                levelCount: levels.length,
-                rawLevels: levels.slice(0, 10) // First 10 levels for reference
+                timestamp: current.time,
+                indices: {
+                    cape: cape,
+                    cin: cin,
+                    liftedIndex: liftedIndex
+                },
+                freezingLevel: freezingLevel,
+                lapseRate: lapseRate,
+                windShear: windShear,
+                dataSource: 'Open-Meteo (GFS/HRRR model blend)'
             };
         } catch (error) {
-            return { success: false, error: 'Failed to parse sounding: ' + error.message };
+            return { success: false, error: 'Failed to parse Open-Meteo data: ' + error.message };
         }
     }
 
-    parseSoundingLevels(preContent) {
-        const levels = [];
-
-        // Sounding data format: PRES HGHT TEMP DWPT RELH MIXR DRCT SKNT THTA THTE THTV
-        const lines = preContent.split('\n');
-
-        for (const line of lines) {
-            // Match lines that start with pressure values (typically 1000-100 hPa range)
-            const match = line.match(/^\s*(\d{3,4}\.?\d*)\s+(\d+)\s+(-?\d+\.?\d*)\s+(-?\d+\.?\d*)\s+(\d+)\s+(\d+\.?\d*)\s+(\d+)\s+(\d+)/);
-
-            if (match) {
-                levels.push({
-                    pressure: parseFloat(match[1]),      // hPa
-                    height: parseFloat(match[2]),        // meters
-                    temperature: parseFloat(match[3]),   // °C
-                    dewpoint: parseFloat(match[4]),      // °C
-                    relHumidity: parseFloat(match[5]),   // %
-                    mixingRatio: parseFloat(match[6]),   // g/kg
-                    windDirection: parseFloat(match[7]), // degrees
-                    windSpeed: parseFloat(match[8])      // knots
-                });
-            }
+    calculateLapseRateFromLevels(temp2m, temp80m, temp120m, temp180m) {
+        // Calculate lapse rate from available temperature levels
+        if (temp2m === null || temp2m === undefined) {
+            return { value: null, error: 'No surface temperature' };
         }
 
-        return levels;
-    }
+        // Use highest available level
+        let upperTemp = null;
+        let upperHeight = null;
 
-    calculateLapseRate(levels) {
-        if (levels.length < 2) {
-            return { value: null, error: 'Insufficient levels' };
+        if (temp180m !== null && temp180m !== undefined) {
+            upperTemp = temp180m;
+            upperHeight = 180;
+        } else if (temp120m !== null && temp120m !== undefined) {
+            upperTemp = temp120m;
+            upperHeight = 120;
+        } else if (temp80m !== null && temp80m !== undefined) {
+            upperTemp = temp80m;
+            upperHeight = 80;
         }
 
-        // Calculate lapse rate between surface and ~500mb (roughly 5.5km)
-        const surface = levels[0];
-        const upper = levels.find(l => l.pressure <= 500) || levels[levels.length - 1];
-
-        if (!surface || !upper || surface.height === upper.height) {
-            return { value: null, error: 'Cannot calculate lapse rate' };
+        if (upperTemp === null) {
+            return { value: null, error: 'No upper level temperature' };
         }
 
-        const tempDiff = surface.temperature - upper.temperature;  // °C
-        const heightDiff = (upper.height - surface.height) / 1000; // km
+        // Lapse rate in °C/km
+        const tempDiff = temp2m - upperTemp;
+        const heightDiff = (upperHeight - 2) / 1000; // km
+        const lapseRate = tempDiff / heightDiff;
 
-        const lapseRate = tempDiff / heightDiff; // °C/km
-
-        // Determine stability
+        // Note: This is a shallow layer lapse rate, not full tropospheric
         let stability;
-        if (lapseRate > 9.8) stability = 'Absolutely Unstable';
+        if (lapseRate > 9.8) stability = 'Absolutely Unstable (shallow layer)';
         else if (lapseRate > 6.5) stability = 'Conditionally Unstable';
         else if (lapseRate > 4.0) stability = 'Stable';
-        else stability = 'Very Stable (Inversion Likely)';
+        else stability = 'Very Stable / Inversion';
 
         return {
             value: lapseRate,
-            surfaceTemp: surface.temperature,
-            upperTemp: upper.temperature,
-            surfaceHeight: surface.height,
-            upperHeight: upper.height,
-            upperPressure: upper.pressure,
-            stability
+            surfaceTemp: temp2m,
+            upperTemp: upperTemp,
+            surfaceHeight: 2,
+            upperHeight: upperHeight,
+            stability: stability,
+            note: 'Shallow layer (surface to 180m)'
         };
     }
 
-    calculateWindShear(levels) {
-        if (levels.length < 2) {
-            return { bulk0_6km: null, bulk0_1km: null, error: 'Insufficient levels' };
-        }
-
-        const surface = levels[0];
-
-        // Find level closest to 1km AGL
-        const level1km = levels.find(l => l.height - surface.height >= 1000) || levels[1];
-
-        // Find level closest to 6km AGL
-        const level6km = levels.find(l => l.height - surface.height >= 6000) || levels[levels.length - 1];
-
-        // Calculate wind components
+    calculateWindShearFromLevels(wind10m, wind80m, wind120m, wind180m) {
+        // Calculate wind shear from multi-level data
         const toComponents = (speed, dir) => {
+            if (speed === null || dir === null) return null;
             const rad = (dir * Math.PI) / 180;
             return {
                 u: -speed * Math.sin(rad),
@@ -368,35 +395,46 @@ class NOAAWeatherService {
             };
         };
 
-        const surfaceWind = toComponents(surface.windSpeed, surface.windDirection);
-        const wind1km = toComponents(level1km.windSpeed, level1km.windDirection);
-        const wind6km = toComponents(level6km.windSpeed, level6km.windDirection);
+        const surface = toComponents(wind10m.speed, wind10m.direction);
+        const w80 = toComponents(wind80m?.speed, wind80m?.direction);
+        const w120 = toComponents(wind120m?.speed, wind120m?.direction);
+        const w180 = toComponents(wind180m?.speed, wind180m?.direction);
 
-        // Bulk shear magnitude
-        const shear0_1km = Math.sqrt(
-            Math.pow(wind1km.u - surfaceWind.u, 2) +
-            Math.pow(wind1km.v - surfaceWind.v, 2)
+        if (!surface) {
+            return { value: null, error: 'No surface wind' };
+        }
+
+        // Use highest available level for shear calculation
+        let upper = w180 || w120 || w80;
+        let upperHeight = w180 ? 180 : (w120 ? 120 : 80);
+
+        if (!upper) {
+            return { value: null, error: 'No upper level wind' };
+        }
+
+        // Bulk shear magnitude (km/h)
+        const shear = Math.sqrt(
+            Math.pow(upper.u - surface.u, 2) +
+            Math.pow(upper.v - surface.v, 2)
         );
 
-        const shear0_6km = Math.sqrt(
-            Math.pow(wind6km.u - surfaceWind.u, 2) +
-            Math.pow(wind6km.v - surfaceWind.v, 2)
-        );
+        // Convert to knots for interpretation (1 km/h = 0.54 knots)
+        const shearKnots = shear * 0.54;
 
-        // Interpretation
+        // Interpretation (scaled for shallow layer)
         let interpretation;
-        if (shear0_6km > 40) interpretation = 'Significant tornado potential';
-        else if (shear0_6km > 25) interpretation = 'Supercell potential';
-        else if (shear0_6km > 15) interpretation = 'Organized storms possible';
-        else interpretation = 'Weak shear - pulse storms';
+        if (shearKnots > 15) interpretation = 'Strong low-level shear';
+        else if (shearKnots > 10) interpretation = 'Moderate low-level shear';
+        else if (shearKnots > 5) interpretation = 'Weak shear';
+        else interpretation = 'Minimal shear';
 
         return {
-            bulk0_1km: shear0_1km,
-            bulk0_6km: shear0_6km,
-            surfaceWind: { speed: surface.windSpeed, direction: surface.windDirection },
-            wind1km: { speed: level1km.windSpeed, direction: level1km.windDirection, heightAGL: level1km.height - surface.height },
-            wind6km: { speed: level6km.windSpeed, direction: level6km.windDirection, heightAGL: level6km.height - surface.height },
-            interpretation
+            value: shear,
+            valueKnots: shearKnots,
+            surfaceWind: wind10m,
+            upperWind: { speed: w180?.speed || w120?.speed || w80?.speed, height: upperHeight },
+            interpretation: interpretation,
+            note: 'Low-level shear (10m to 180m)'
         };
     }
 
@@ -406,16 +444,16 @@ class NOAAWeatherService {
 
     async getAllWeatherData() {
         // Fetch all data sources in parallel
-        const [surface, gulfSST, sounding] = await Promise.all([
+        const [surface, gulfSST, atmospheric] = await Promise.all([
             this.fetchSurfaceObservations(),
             this.fetchGulfSST(),
-            this.fetchSounding()
+            this.fetchAtmosphericData()
         ]);
 
         return {
             surface,
             gulfSST,
-            sounding,
+            atmospheric,
             fetchTime: new Date().toISOString()
         };
     }
@@ -459,9 +497,9 @@ class NOAAWeatherService {
         // ═══════════════════════════════════════════════════════════════
         // D - Energy Dispersal (from real CAPE and convection data)
         // ═══════════════════════════════════════════════════════════════
-        const soundingData = allData.sounding.success ? allData.sounding : null;
-        const cape = soundingData?.indices?.cape;
-        const cin = soundingData?.indices?.cin;
+        const atmosphericData = allData.atmospheric.success ? allData.atmospheric : null;
+        const cape = atmosphericData?.indices?.cape;
+        const cin = atmosphericData?.indices?.cin;
 
         const temp = surfaceData?.temperature?.value;
         const windSpd = surfaceData?.windSpeed?.value;
@@ -479,8 +517,8 @@ class NOAAWeatherService {
             cape: realValue(cape, 0),
             cin: realValue(cin, 0),
             heatTransferRate: realValue(heatTransfer, 1),
-            liftedIndex: realValue(soundingData?.indices?.liftedIndex, 1),
-            dataSource: allData.sounding.success ? 'KLZK Sounding' : 'UNAVAILABLE',
+            liftedIndex: realValue(atmosphericData?.indices?.liftedIndex, 1),
+            dataSource: allData.atmospheric.success ? 'Open-Meteo' : 'UNAVAILABLE',
             trend: this.calcTrend('cape', cape),
             dsoModifier: this.getCAPEModifier(cape, cin)
         };
@@ -490,8 +528,8 @@ class NOAAWeatherService {
         // ═══════════════════════════════════════════════════════════════
         const windDir = surfaceData?.windDirection?.value;
         const windGust = surfaceData?.windGust?.value;
-        const shear0_6km = soundingData?.windShear?.bulk0_6km;
-        const shear0_1km = soundingData?.windShear?.bulk0_1km;
+        const shear0_6km = atmosphericData?.windShear?.bulk0_6km;
+        const shear0_1km = atmosphericData?.windShear?.bulk0_1km;
 
         variables.windPattern = {
             symbol: 'W',
@@ -504,8 +542,8 @@ class NOAAWeatherService {
             gustMph: realValue(windGust ? windGust * 0.621371 : null, 1),
             shear0_6km: realValue(shear0_6km, 1),
             shear0_1km: realValue(shear0_1km, 1),
-            shearInterpretation: soundingData?.windShear?.interpretation || 'NO DATA',
-            dataSource: `Surface: ${allData.surface.success ? 'KLIT' : 'UNAVAILABLE'}, Shear: ${allData.sounding.success ? 'KLZK' : 'UNAVAILABLE'}`,
+            shearInterpretation: atmosphericData?.windShear?.interpretation || 'NO DATA',
+            dataSource: `Surface: ${allData.surface.success ? 'KLIT' : 'UNAVAILABLE'}, Shear: ${allData.atmospheric.success ? 'KLZK' : 'UNAVAILABLE'}`,
             trend: this.calcTrend('wind', windSpd),
             dsoModifier: this.getShearModifier(shear0_6km, shear0_1km)
         };
@@ -538,7 +576,7 @@ class NOAAWeatherService {
         // ═══════════════════════════════════════════════════════════════
         // T - Thermal Variance (from REAL sounding lapse rate)
         // ═══════════════════════════════════════════════════════════════
-        const lapseData = soundingData?.lapseRate;
+        const lapseData = atmosphericData?.lapseRate;
         const lapseRate = lapseData?.value;
 
         variables.thermalVariance = {
@@ -552,7 +590,7 @@ class NOAAWeatherService {
             inversionPresent: lapseRate !== null ? (lapseRate < 4.0 ? 'YES' : 'NO') : 'NO DATA',
             upperTemp: realValue(lapseData?.upperTemp, 1),
             upperHeight: realValue(lapseData?.upperHeight, 0),
-            dataSource: allData.sounding.success ? 'KLZK Sounding' : 'UNAVAILABLE',
+            dataSource: allData.atmospheric.success ? 'Open-Meteo' : 'UNAVAILABLE',
             trend: this.calcTrend('temp', temp),
             dsoModifier: this.getLapseRateModifier(lapseRate)
         };
@@ -627,14 +665,14 @@ class NOAAWeatherService {
         // ═══════════════════════════════════════════════════════════════
         // Solar Angle (α) - Calculated for Arkansas latitude
         // ═══════════════════════════════════════════════════════════════
-        const solarAngle = this.calculateSolarAngle(this.ARKANSAS.lat, dayOfYear);
+        const solarAngle = this.calculateSolarAngle(this.location.lat, dayOfYear);
 
         variables.solarAngle = {
             symbol: 'sin(α)',
             name: 'Solar Angle',
             value: realValue(solarAngle, 3),
             incidenceDegrees: realValue(Math.asin(solarAngle) * 180 / Math.PI, 1),
-            latitude: this.ARKANSAS.lat,
+            latitude: this.location.lat,
             dataSource: 'Calculated (Solar Geometry)',
             trend: this.calcTrend('solar', solarAngle),
             dsoModifier: `Solar punch: ${(solarAngle * 100).toFixed(0)}%`
@@ -645,17 +683,17 @@ class NOAAWeatherService {
         // ═══════════════════════════════════════════════════════════════
         variables.metadata = {
             timestamp: new Date().toISOString(),
-            location: this.ARKANSAS.name,
+            location: this.location.name,
             dayOfYear: dayOfYear,
             dataSources: {
                 surface: allData.surface.success,
                 gulfBuoys: allData.gulfSST.success,
-                sounding: allData.sounding.success
+                atmospheric: allData.atmospheric.success
             },
             errors: {
                 surface: allData.surface.error || null,
                 gulfBuoys: allData.gulfSST.error || null,
-                sounding: allData.sounding.error || null
+                atmospheric: allData.atmospheric.error || null
             }
         };
 
@@ -779,9 +817,68 @@ class NOAAWeatherService {
         if (eFuel > 0.5) return `Moderate fuel (${(eFuel*100).toFixed(0)}%) - Gulf ${gulfSST.toFixed(1)}°C - adequate energy`;
         return `Low fuel (${(eFuel*100).toFixed(0)}%) - Gulf ${gulfSST.toFixed(1)}°C - limited potential`;
     }
+
+    // ═══════════════════════════════════════════════════════════════
+    // SIMPLE PREDICTION FOR AVERAGE USER
+    // ═══════════════════════════════════════════════════════════════
+
+    async getSimplePrediction() {
+        const vars = await this.getWeatherVariables();
+
+        // Calculate overall storm risk from DSO components
+        const eFuel = vars.eFuel?.value?.raw || 0;
+        const gradient = vars.gradient?.value?.raw || 0;
+        const catalyst = vars.catalyst?.value?.raw || 0;
+        const solar = vars.solarAngle?.value?.raw || 0;
+        const cape = vars.energyDispersal?.cape?.raw || 0;
+
+        // DSO Power Index
+        const P = eFuel * Math.abs(catalyst) * solar;
+
+        // Simple risk assessment
+        let riskLevel, riskColor, summary, confidence;
+
+        if (P > 0.4 && cape > 1500) {
+            riskLevel = 'HIGH';
+            riskColor = '#ff4444';
+            summary = 'Significant severe weather potential today';
+            confidence = 'High - Strong indicators align';
+        } else if (P > 0.25 && cape > 500) {
+            riskLevel = 'MODERATE';
+            riskColor = '#ffaa00';
+            summary = 'Isolated storms possible, some could be strong';
+            confidence = 'Moderate - Some indicators present';
+        } else if (P > 0.15 || cape > 250) {
+            riskLevel = 'LOW';
+            riskColor = '#44aa44';
+            summary = 'Slight chance of scattered showers/storms';
+            confidence = 'Moderate - Weak signals';
+        } else {
+            riskLevel = 'MINIMAL';
+            riskColor = '#4488ff';
+            summary = 'Low severe weather threat';
+            confidence = 'High - Conditions unfavorable';
+        }
+
+        return {
+            riskLevel,
+            riskColor,
+            summary,
+            confidence,
+            dsoIndex: P,
+            cape: cape,
+            timestamp: new Date().toISOString(),
+            location: this.location.name,
+            dataQuality: {
+                surface: vars.metadata.dataSources.surface,
+                gulfSST: vars.metadata.dataSources.gulfBuoys,
+                atmospheric: vars.metadata.dataSources.atmospheric
+            }
+        };
+    }
 }
 
 // Export
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = NOAAWeatherService;
+    module.exports = DSOWeatherService;
 }

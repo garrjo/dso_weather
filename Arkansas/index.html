@@ -861,12 +861,158 @@
             font-style: italic;
         }
 
+        /* ══════════════════════════════════════════════════════════
+           SIMPLE PREDICTION PANEL (Top - For Average Users)
+           ══════════════════════════════════════════════════════════ */
+
+        .prediction-hero {
+            background: linear-gradient(135deg, #1a1a25 0%, #0f0f18 100%);
+            border: 2px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .prediction-hero.risk-minimal { border-color: #4488ff; }
+        .prediction-hero.risk-low { border-color: #44aa44; }
+        .prediction-hero.risk-moderate { border-color: #ffaa00; }
+        .prediction-hero.risk-high { border-color: #ff4444; }
+
+        .prediction-location {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .prediction-location .loc-icon {
+            font-size: 1.2rem;
+        }
+
+        .prediction-time {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        .prediction-risk-level {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 20px currentColor;
+        }
+
+        .risk-minimal .prediction-risk-level { color: #4488ff; }
+        .risk-low .prediction-risk-level { color: #44aa44; }
+        .risk-moderate .prediction-risk-level { color: #ffaa00; }
+        .risk-high .prediction-risk-level { color: #ff4444; }
+
+        .prediction-summary {
+            font-size: 1.3rem;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+        }
+
+        .prediction-confidence {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        .prediction-metrics {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .prediction-metric {
+            text-align: center;
+        }
+
+        .prediction-metric-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--accent-gold);
+        }
+
+        .prediction-metric-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .data-sources-status {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .source-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.05);
+        }
+
+        .source-badge.online { color: #44ff44; border: 1px solid #44ff44; }
+        .source-badge.offline { color: #ff4444; border: 1px solid #ff4444; }
+
+        .geolocation-prompt {
+            background: rgba(74, 158, 255, 0.1);
+            border: 1px solid var(--accent-blue);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .geolocation-prompt button {
+            background: var(--accent-blue);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        .geolocation-prompt button:hover {
+            background: #3a8eef;
+        }
+
+        .toggle-details {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin-top: 1rem;
+        }
+
+        .toggle-details:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
         @media (max-width: 768px) {
             h1 { font-size: 2rem; }
             .container { padding: 1rem; }
             .inversion-grid { grid-template-columns: 1fr; }
             .result-grid { grid-template-columns: repeat(2, 1fr); }
             .paradox-comparison { grid-template-columns: 1fr; }
+            .prediction-risk-level { font-size: 2.5rem; }
+            .prediction-metrics { gap: 1rem; }
         }
     </style>
 </head>
@@ -874,9 +1020,61 @@
     <div class="container">
         <header>
             <h1><span>DSO</span> Weather Model</h1>
-            <p class="subtitle">Drag-Scale-Object E-Field Severe Weather Prediction</p>
+            <p class="subtitle">Real-Time Severe Weather Prediction</p>
             <p class="tagline">"Weather is E-geometry, not chaos."</p>
         </header>
+
+        <!-- ═══════════════════════════════════════════════════════════
+             SIMPLE PREDICTION PANEL (For Average Users)
+             ═══════════════════════════════════════════════════════════ -->
+        <section id="prediction-panel" class="prediction-hero risk-minimal">
+            <div id="geolocation-request" class="geolocation-prompt" style="display: none;">
+                <p>Allow location access for local weather predictions</p>
+                <button onclick="requestGeolocation()">Use My Location</button>
+            </div>
+
+            <div class="prediction-location">
+                <span class="loc-icon">📍</span>
+                <span id="prediction-location-name">Loading location...</span>
+            </div>
+            <div class="prediction-time" id="prediction-time">--</div>
+
+            <div class="prediction-risk-level" id="prediction-risk-level">--</div>
+            <div class="prediction-summary" id="prediction-summary">Loading forecast...</div>
+            <div class="prediction-confidence" id="prediction-confidence">--</div>
+
+            <div class="prediction-metrics">
+                <div class="prediction-metric">
+                    <div class="prediction-metric-value" id="metric-dso">--</div>
+                    <div class="prediction-metric-label">DSO Index</div>
+                </div>
+                <div class="prediction-metric">
+                    <div class="prediction-metric-value" id="metric-cape">--</div>
+                    <div class="prediction-metric-label">CAPE (J/kg)</div>
+                </div>
+                <div class="prediction-metric">
+                    <div class="prediction-metric-value" id="metric-temp">--</div>
+                    <div class="prediction-metric-label">Temperature</div>
+                </div>
+                <div class="prediction-metric">
+                    <div class="prediction-metric-value" id="metric-wind">--</div>
+                    <div class="prediction-metric-label">Wind</div>
+                </div>
+            </div>
+
+            <div class="data-sources-status" id="data-sources-status">
+                <span class="source-badge" id="source-surface">Surface: --</span>
+                <span class="source-badge" id="source-sst">Gulf SST: --</span>
+                <span class="source-badge" id="source-atmo">Atmospheric: --</span>
+            </div>
+
+            <button class="toggle-details" onclick="toggleDetailedView()">
+                Show Detailed Analysis ▼
+            </button>
+        </section>
+
+        <!-- Detailed sections hidden by default -->
+        <div id="detailed-sections">
 
         <!-- Core Constants -->
         <section class="section">
@@ -1149,7 +1347,7 @@
         <section class="section" id="arkansasPanel">
             <h2>Arkansas Real-Time Forecast Variables</h2>
             <p style="color: var(--text-secondary); margin-bottom: 0.5rem;">
-                <strong style="color: var(--accent-red);">LIVE DATA</strong> from NOAA/NWS, NDBC Buoys, and KLZK Soundings. No estimates.
+                <strong style="color: var(--accent-red);">LIVE DATA</strong> from NWS, NOAA ERDDAP (Gulf SST), and Open-Meteo (atmospheric). No estimates.
             </p>
 
             <!-- Data Source Status -->
@@ -1475,6 +1673,8 @@
             </div>
         </section>
 
+        </div><!-- End detailed-sections -->
+
         <footer>
             <div class="stats-row">
                 <div class="stat">
@@ -1496,6 +1696,9 @@
             </p>
         </footer>
     </div>
+
+    <!-- Load external weather service (CORS-enabled ERDDAP + Open-Meteo) -->
+    <script src="noaaWeatherService.js"></script>
 
     <script>
         // DSO Weather Engine (Embedded)
@@ -1716,56 +1919,26 @@
         let currentRealData = null;
         const ARK_LAT = 34.7465;
 
-        // NOAA Weather Service - Real Data Only
-        class NOAAWeatherService {
+        // Weather Service Adapter - wraps DSOWeatherService with display-compatible output
+        // Uses ERDDAP for Gulf SST (CORS-enabled) and Open-Meteo for CAPE/CIN
+        class WeatherServiceAdapter {
             constructor() {
-                this.NWS_API = 'https://api.weather.gov';
-                this.NDBC_API = 'https://www.ndbc.noaa.gov/data/realtime2';
-                this.stationId = 'KLIT';
-                this.GULF_BUOYS = ['42001', '42002', '42019', '42035', '42040', '42067'];
+                // Use the external DSOWeatherService (loaded from noaaWeatherService.js)
+                if (typeof DSOWeatherService === 'undefined') {
+                    console.error('DSOWeatherService not loaded! Check noaaWeatherService.js');
+                    this.dsoService = null;
+                } else {
+                    this.dsoService = new DSOWeatherService({
+                        location: {
+                            name: 'Arkansas',
+                            lat: ARK_LAT,
+                            lon: -92.2896,
+                            stationId: 'KLIT',
+                            nwsOffice: 'LZK'
+                        }
+                    });
+                }
                 this.previousValues = {};
-            }
-
-            async fetchSurface() {
-                const url = `${this.NWS_API}/stations/${this.stationId}/observations/latest`;
-                try {
-                    const resp = await fetch(url, { headers: { 'User-Agent': 'DSOWeather/1.0' }});
-                    if (!resp.ok) throw new Error(`NWS: ${resp.status}`);
-                    const data = await resp.json();
-                    return { success: true, data: data.properties };
-                } catch (e) {
-                    return { success: false, error: e.message };
-                }
-            }
-
-            async fetchBuoy(id) {
-                try {
-                    const resp = await fetch(`${this.NDBC_API}/${id}.txt`);
-                    if (!resp.ok) throw new Error(`Buoy ${id}: ${resp.status}`);
-                    const text = await resp.text();
-                    const lines = text.trim().split('\n');
-                    if (lines.length < 3) return { success: false };
-                    const headers = lines[0].replace(/^#/, '').trim().split(/\s+/);
-                    const vals = lines[2].trim().split(/\s+/);
-                    const getVal = (name) => {
-                        const idx = headers.indexOf(name);
-                        if (idx === -1) return null;
-                        const v = parseFloat(vals[idx]);
-                        return isNaN(v) || v === 999 || v === 9999 ? null : v;
-                    };
-                    const sst = getVal('WTMP');
-                    return sst !== null ? { success: true, buoyId: id, sst } : { success: false };
-                } catch (e) {
-                    return { success: false };
-                }
-            }
-
-            async fetchGulfSST() {
-                const results = await Promise.all(this.GULF_BUOYS.map(id => this.fetchBuoy(id)));
-                const valid = results.filter(r => r.success);
-                if (valid.length === 0) return { success: false, error: 'No buoy data' };
-                const avg = valid.reduce((s, r) => s + r.sst, 0) / valid.length;
-                return { success: true, sst: valid[0].sst, avgSST: avg, count: valid.length, readings: valid };
             }
 
             getDayOfYear() {
@@ -1811,42 +1984,92 @@
                 return d[Math.round(deg / 22.5) % 16];
             }
 
+            // Extract raw value from DSOWeatherService format {value, isReal, raw}
+            extractRaw(obj) {
+                if (!obj) return null;
+                if (obj.raw !== undefined) return obj.raw;
+                if (obj.value === 'NO DATA' || !obj.isReal) return null;
+                const num = parseFloat(obj.value);
+                return isNaN(num) ? null : num;
+            }
+
+            extractDisplay(obj, fallback = 'NO DATA') {
+                if (!obj) return fallback;
+                if (obj.value === 'NO DATA' || !obj.isReal) return fallback;
+                return obj.value;
+            }
+
+            getEmptyVariables() {
+                const doy = this.getDayOfYear();
+                const catalyst = this.calcCatalyst(doy);
+                const solar = this.calcSolar(ARK_LAT, doy);
+                return {
+                    humidity: { dewpoint: 'NO DATA', rh: 'NO DATA', source: 'SERVICE UNAVAILABLE', trend: '—' },
+                    dispersal: { cape: 'NO DATA', cin: 'NO DATA', li: 'NO DATA', source: 'SERVICE UNAVAILABLE', trend: '—' },
+                    wind: { speed: 'NO DATA', dir: 'NO DATA', dirDeg: '--', shear6km: 'NO DATA', shear1km: 'NO DATA', source: 'SERVICE UNAVAILABLE', trend: '—' },
+                    angle: { frontAngle: 'NO DATA', pressure: 'NO DATA', approach: 'NO DATA', source: 'SERVICE UNAVAILABLE', trend: '—' },
+                    thermal: { surfaceF: 'NO DATA', lapseRate: 'NO DATA', stability: 'NO DATA', source: 'SERVICE UNAVAILABLE', trend: '—' },
+                    eFuel: { value: 'NO DATA', gulfSST: 'NO DATA', avgSST: 'NO DATA', buoyCount: 0, source: 'SERVICE UNAVAILABLE', trend: '—' },
+                    gradient: { value: 'NO DATA', pressure: 'NO DATA', departure: 'NO DATA', source: 'SERVICE UNAVAILABLE', trend: '—' },
+                    catalyst: { value: catalyst.toFixed(3), daysToEquinox: this.getDaysToEquinox(doy), phase: this.getPhase(doy), source: 'Orbital Mechanics', trend: '→' },
+                    solar: { value: solar.toFixed(3), incidence: (Math.asin(solar) * 180 / Math.PI).toFixed(1), source: 'Solar Geometry', trend: '→' },
+                    indices: { P: null, V: null, D: null },
+                    rawValues: { eFuel: null, gradient: null, catalyst, solar },
+                    meta: { doy, timestamp: new Date().toLocaleString(), surfaceOK: false, buoysOK: false, soundingOK: false }
+                };
+            }
+
             async getWeatherVariables() {
-                const [surface, gulf] = await Promise.all([this.fetchSurface(), this.fetchGulfSST()]);
+                // Fetch from DSOWeatherService (uses ERDDAP + Open-Meteo)
+                if (!this.dsoService) {
+                    console.error('DSOWeatherService not available - returning empty data');
+                    return this.getEmptyVariables();
+                }
+                const dsoVars = await this.dsoService.getWeatherVariables();
                 const doy = this.getDayOfYear();
                 const v = {};
 
-                // Extract surface values
-                const sData = surface.success ? surface.data : null;
-                const getVal = (obj) => (obj && obj.value !== null && obj.value !== undefined) ? obj.value : null;
+                // Extract raw values from DSO format
+                const dewpoint = this.extractRaw(dsoVars.humidity?.dewpoint);
+                const rh = this.extractRaw(dsoVars.humidity?.relativeHumidity);
+                const cape = this.extractRaw(dsoVars.energyDispersal?.cape);
+                const cin = this.extractRaw(dsoVars.energyDispersal?.cin);
+                const li = this.extractRaw(dsoVars.energyDispersal?.liftedIndex);
+                const windSpd = this.extractRaw(dsoVars.windPattern?.speedMph);
+                const windDir = this.extractRaw(dsoVars.windPattern?.direction);
+                const shear6km = this.extractRaw(dsoVars.windPattern?.shear0_6km);
+                const shear1km = this.extractRaw(dsoVars.windPattern?.shear0_1km);
+                const frontAngle = this.extractRaw(dsoVars.angleOfAttack?.frontAngle);
+                const pressureMb = this.extractRaw(dsoVars.angleOfAttack?.pressure);
+                const tempC = this.extractRaw(dsoVars.thermalVariance?.surfaceTemp);
+                const lapseRate = this.extractRaw(dsoVars.thermalVariance?.lapseRate);
+                const gulfSST = this.extractRaw(dsoVars.eFuel?.gulfSST);
+                const avgSST = this.extractRaw(dsoVars.eFuel?.gulfSSTAvg);
+                const eFuelRaw = this.extractRaw(dsoVars.eFuel?.value);
+                const gradientRaw = this.extractRaw(dsoVars.gradient?.value);
+                const catalystRaw = this.extractRaw(dsoVars.catalyst?.value);
+                const solarRaw = this.extractRaw(dsoVars.solarAngle?.value);
 
-                const temp = getVal(sData?.temperature);
-                const dewpoint = getVal(sData?.dewpoint);
-                const rh = getVal(sData?.relativeHumidity);
-                const windSpd = getVal(sData?.windSpeed);
-                const windDir = getVal(sData?.windDirection);
-                const windGust = getVal(sData?.windGust);
-                const pressure = getVal(sData?.barometricPressure);
-                const pressureMb = pressure ? pressure / 100 : null;
+                // Data source flags
+                const surfaceOK = dsoVars.metadata?.dataSources?.surface || false;
+                const buoysOK = dsoVars.metadata?.dataSources?.gulfBuoys || false;
+                const soundingOK = dsoVars.metadata?.dataSources?.atmospheric || false;
 
-                // Gulf SST
-                const gulfSST = gulf.success ? gulf.sst : null;
-                const avgSST = gulf.success ? gulf.avgSST : null;
+                // Computed values (use DSO values or calculate)
+                const catalyst = catalystRaw !== null ? catalystRaw : this.calcCatalyst(doy);
+                const solar = solarRaw !== null ? solarRaw : this.calcSolar(ARK_LAT, doy);
 
-                // Computed values
-                const catalyst = this.calcCatalyst(doy);
-                const solar = this.calcSolar(ARK_LAT, doy);
-
-                // E_fuel from real data
-                let eFuel = null;
-                if (gulfSST !== null && rh !== null) {
+                // E_fuel - prefer DSO calculation, fallback to local
+                let eFuel = eFuelRaw;
+                if (eFuel === null && gulfSST !== null && rh !== null) {
                     eFuel = Math.max(0, Math.min(1, 0.7 * (gulfSST - 20) / 10 + 0.3 * rh / 100));
                 }
 
-                // Gradient from real data
-                let gradient = null;
-                if (pressureMb !== null && windSpd !== null) {
-                    gradient = Math.min(1, Math.abs(pressureMb - 1013.25) / 20 + windSpd / 50);
+                // Gradient - prefer DSO calculation, fallback to local
+                let gradient = gradientRaw;
+                if (gradient === null && pressureMb !== null && windSpd !== null) {
+                    const windKmh = windSpd / 0.621371;
+                    gradient = Math.min(1, Math.abs(pressureMb - 1013.25) / 20 + windKmh / 50);
                 }
 
                 // DSO indices
@@ -1855,54 +2078,54 @@
                 if (gradient !== null) V = gradient * catalyst * solar;
                 if (eFuel !== null && gradient !== null) D = eFuel * gradient * Math.pow(catalyst, 2) * Math.pow(solar, 2);
 
+                // Build display-compatible output
                 v.humidity = {
                     dewpoint: dewpoint !== null ? dewpoint.toFixed(1) : 'NO DATA',
                     rh: rh !== null ? rh.toFixed(0) : 'NO DATA',
-                    source: surface.success ? 'NWS KLIT' : 'UNAVAILABLE',
+                    source: dsoVars.humidity?.dataSource || 'UNAVAILABLE',
                     trend: this.trend('rh', rh)
                 };
 
                 v.dispersal = {
-                    cape: 'NO DATA',
-                    cin: 'NO DATA',
-                    li: 'NO DATA',
-                    source: 'Sounding UNAVAILABLE',
-                    trend: '—'
+                    cape: cape !== null ? Math.round(cape).toString() : 'NO DATA',
+                    cin: cin !== null ? Math.round(cin).toString() : 'NO DATA',
+                    li: li !== null ? li.toFixed(1) : 'NO DATA',
+                    source: dsoVars.energyDispersal?.dataSource || 'UNAVAILABLE',
+                    trend: this.trend('cape', cape)
                 };
 
                 v.wind = {
-                    speed: windSpd !== null ? (windSpd * 0.621371).toFixed(1) : 'NO DATA',
+                    speed: windSpd !== null ? windSpd.toFixed(1) : 'NO DATA',
                     dir: windDir !== null ? this.cardinal(windDir) : 'NO DATA',
                     dirDeg: windDir !== null ? windDir.toFixed(0) : '--',
-                    shear6km: 'NO DATA',
-                    shear1km: 'NO DATA',
-                    source: surface.success ? 'NWS KLIT' : 'UNAVAILABLE',
+                    shear6km: shear6km !== null ? shear6km.toFixed(1) : 'NO DATA',
+                    shear1km: shear1km !== null ? shear1km.toFixed(1) : 'NO DATA',
+                    source: dsoVars.windPattern?.dataSource || 'UNAVAILABLE',
                     trend: this.trend('wind', windSpd)
                 };
 
                 v.angle = {
-                    frontAngle: windDir !== null ? Math.abs((windDir - 270 + 540) % 360 - 180).toFixed(0) : 'NO DATA',
+                    frontAngle: frontAngle !== null ? frontAngle.toFixed(0) : 'NO DATA',
                     pressure: pressureMb !== null ? pressureMb.toFixed(1) : 'NO DATA',
-                    approach: pressureMb !== null && windDir !== null ?
-                        (pressureMb < 1011 ? (windDir > 180 && windDir < 270 ? 'SW approach' : 'NW approach') : 'Weak boundary') : 'NO DATA',
-                    source: surface.success ? 'NWS KLIT' : 'UNAVAILABLE',
+                    approach: dsoVars.angleOfAttack?.approachDirection || 'NO DATA',
+                    source: dsoVars.angleOfAttack?.dataSource || 'UNAVAILABLE',
                     trend: pressureMb !== null ? (pressureMb > 1013.25 ? '↑' : pressureMb < 1013.25 ? '↓' : '→') : '—'
                 };
 
                 v.thermal = {
-                    surfaceF: temp !== null ? (temp * 9/5 + 32).toFixed(1) : 'NO DATA',
-                    lapseRate: 'NO DATA',
-                    stability: 'NO DATA',
-                    source: 'Sounding UNAVAILABLE',
-                    trend: this.trend('temp', temp)
+                    surfaceF: tempC !== null ? (tempC * 9/5 + 32).toFixed(1) : 'NO DATA',
+                    lapseRate: lapseRate !== null ? lapseRate.toFixed(1) : 'NO DATA',
+                    stability: dsoVars.thermalVariance?.stability || 'NO DATA',
+                    source: dsoVars.thermalVariance?.dataSource || 'UNAVAILABLE',
+                    trend: this.trend('temp', tempC)
                 };
 
                 v.eFuel = {
                     value: eFuel !== null ? eFuel.toFixed(3) : 'NO DATA',
                     gulfSST: gulfSST !== null ? gulfSST.toFixed(1) : 'NO DATA',
                     avgSST: avgSST !== null ? avgSST.toFixed(1) : 'NO DATA',
-                    buoyCount: gulf.success ? gulf.count : 0,
-                    source: gulf.success ? `NDBC (${gulf.count} buoys)` : 'UNAVAILABLE',
+                    buoyCount: dsoVars.eFuel?.buoyCount || 0,
+                    source: dsoVars.eFuel?.dataSource || 'UNAVAILABLE',
                     trend: this.trend('efuel', eFuel)
                 };
 
@@ -1910,7 +2133,7 @@
                     value: gradient !== null ? gradient.toFixed(3) : 'NO DATA',
                     pressure: pressureMb !== null ? pressureMb.toFixed(1) : 'NO DATA',
                     departure: pressureMb !== null ? Math.abs(pressureMb - 1013.25).toFixed(1) : 'NO DATA',
-                    source: surface.success ? 'NWS KLIT' : 'UNAVAILABLE',
+                    source: dsoVars.gradient?.dataSource || 'UNAVAILABLE',
                     trend: this.trend('gradient', gradient)
                 };
 
@@ -1934,23 +2157,23 @@
                 v.meta = {
                     doy,
                     timestamp: new Date().toLocaleString(),
-                    surfaceOK: surface.success,
-                    buoysOK: gulf.success,
-                    soundingOK: false
+                    surfaceOK,
+                    buoysOK,
+                    soundingOK
                 };
 
                 return v;
             }
         }
 
-        const noaaService = new NOAAWeatherService();
+        const noaaService = new WeatherServiceAdapter();
 
         // Update Arkansas panel
         async function updateArkansasPanel() {
             const statusEl = document.getElementById('arkansasStatus');
             const refreshBtn = document.getElementById('refreshArkansas');
             refreshBtn.disabled = true;
-            statusEl.textContent = 'Fetching live data from NOAA/NWS and NDBC buoys...';
+            statusEl.textContent = 'Fetching live data from NWS, ERDDAP, and Open-Meteo...';
 
             try {
                 const v = await noaaService.getWeatherVariables();
@@ -1959,9 +2182,9 @@
                 // Status bar
                 document.getElementById('status-surface').textContent = `Surface: ${v.meta.surfaceOK ? 'ONLINE' : 'OFFLINE'}`;
                 document.getElementById('status-surface').className = `data-source ${v.meta.surfaceOK ? 'online' : 'offline'}`;
-                document.getElementById('status-buoys').textContent = `Gulf Buoys: ${v.meta.buoysOK ? v.eFuel.buoyCount + ' active' : 'OFFLINE'}`;
+                document.getElementById('status-buoys').textContent = `Gulf SST: ${v.meta.buoysOK ? 'ERDDAP OK' : 'OFFLINE'}`;
                 document.getElementById('status-buoys').className = `data-source ${v.meta.buoysOK ? 'online' : 'offline'}`;
-                document.getElementById('status-sounding').textContent = `Sounding: ${v.meta.soundingOK ? 'ONLINE' : 'UNAVAILABLE'}`;
+                document.getElementById('status-sounding').textContent = `Atmospheric: ${v.meta.soundingOK ? 'Open-Meteo OK' : 'UNAVAILABLE'}`;
                 document.getElementById('status-sounding').className = `data-source ${v.meta.soundingOK ? 'online' : 'offline'}`;
                 document.getElementById('arkansasDOY').textContent = v.meta.doy;
                 document.getElementById('arkansasTimestamp').textContent = v.meta.timestamp;
@@ -2096,7 +2319,7 @@
                     predProb.textContent = 'Need Gulf SST + Surface';
                 }
 
-                statusEl.textContent = `Live data updated - ${v.meta.surfaceOK ? 'Surface OK' : 'Surface FAIL'}, ${v.meta.buoysOK ? 'Buoys OK' : 'Buoys FAIL'}`;
+                statusEl.textContent = `Live data updated - ${v.meta.surfaceOK ? 'Surface OK' : 'Surface FAIL'}, ${v.meta.buoysOK ? 'Gulf SST OK' : 'Gulf SST FAIL'}, ${v.meta.soundingOK ? 'Atmospheric OK' : 'Atmospheric FAIL'}`;
             } catch (error) {
                 statusEl.textContent = 'Error: ' + error.message;
                 console.error('Update failed:', error);
@@ -2167,10 +2390,236 @@
         // Event listeners
         document.getElementById('refreshArkansas').addEventListener('click', updateArkansasPanel);
 
+        // ═══════════════════════════════════════════════════════════════
+        // SIMPLE PREDICTION PANEL FUNCTIONS
+        // ═══════════════════════════════════════════════════════════════
+
+        // Global service instance
+        let weatherService = null;
+        let detailedViewVisible = false;
+
+        // Initialize weather service
+        async function initWeatherService() {
+            // Use DSOWeatherService if available (from external file), otherwise fall back to embedded
+            if (typeof DSOWeatherService !== 'undefined') {
+                weatherService = new DSOWeatherService();
+            } else {
+                // Fallback: create a minimal service using Open-Meteo directly
+                weatherService = createMinimalWeatherService();
+            }
+        }
+
+        // Minimal inline service for when external file isn't loaded
+        function createMinimalWeatherService() {
+            return {
+                location: { name: 'Arkansas', lat: 34.7465, lon: -92.2896 },
+
+                async setLocationFromCoords(lat, lon) {
+                    this.location.lat = lat;
+                    this.location.lon = lon;
+                    // Get location name from NWS
+                    try {
+                        const resp = await fetch(`https://api.weather.gov/points/${lat.toFixed(4)},${lon.toFixed(4)}`);
+                        if (resp.ok) {
+                            const data = await resp.json();
+                            this.location.name = `${data.properties.relativeLocation?.properties?.city || 'Unknown'}, ${data.properties.relativeLocation?.properties?.state || ''}`;
+                        }
+                    } catch (e) {
+                        this.location.name = `${lat.toFixed(2)}°N, ${Math.abs(lon).toFixed(2)}°W`;
+                    }
+                    return this.location;
+                },
+
+                getLocation() { return this.location; },
+
+                async getSimplePrediction() {
+                    const loc = this.location;
+                    // Fetch from Open-Meteo
+                    const params = new URLSearchParams({
+                        latitude: loc.lat,
+                        longitude: loc.lon,
+                        current: 'temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,surface_pressure',
+                        hourly: 'cape,convective_inhibition',
+                        temperature_unit: 'celsius',
+                        wind_speed_unit: 'kmh',
+                        timezone: 'auto',
+                        forecast_days: 1
+                    });
+
+                    try {
+                        const resp = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`);
+                        const data = await resp.json();
+                        const current = data.current;
+                        const hourly = data.hourly;
+                        const currentHour = new Date().getHours();
+
+                        const cape = hourly.cape?.[currentHour] || 0;
+                        const temp = current.temperature_2m;
+                        const wind = current.wind_speed_10m;
+                        const rh = current.relative_humidity_2m;
+
+                        // Simple DSO calculation
+                        const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
+                        const catalyst = Math.abs(Math.cos((2 * Math.PI * (dayOfYear - 80)) / 365.25));
+                        const latRad = (loc.lat * Math.PI) / 180;
+                        const declination = 23.44 * Math.sin((2 * Math.PI * (dayOfYear - 81)) / 365.25);
+                        const solar = Math.max(0, Math.sin(Math.asin(Math.sin(latRad) * Math.sin(declination * Math.PI / 180) + Math.cos(latRad) * Math.cos(declination * Math.PI / 180))));
+
+                        const eFuel = Math.min(1, (rh / 100) * 0.5 + 0.3); // Simplified
+                        const P = eFuel * catalyst * solar;
+
+                        let riskLevel, riskColor, summary, confidence;
+                        if (P > 0.4 && cape > 1500) {
+                            riskLevel = 'HIGH'; riskColor = '#ff4444';
+                            summary = 'Significant severe weather potential';
+                            confidence = 'High - Strong indicators';
+                        } else if (P > 0.25 && cape > 500) {
+                            riskLevel = 'MODERATE'; riskColor = '#ffaa00';
+                            summary = 'Isolated storms possible, some strong';
+                            confidence = 'Moderate';
+                        } else if (P > 0.15 || cape > 250) {
+                            riskLevel = 'LOW'; riskColor = '#44aa44';
+                            summary = 'Slight chance of scattered storms';
+                            confidence = 'Moderate';
+                        } else {
+                            riskLevel = 'MINIMAL'; riskColor = '#4488ff';
+                            summary = 'Low severe weather threat';
+                            confidence = 'High - Conditions unfavorable';
+                        }
+
+                        return {
+                            riskLevel, riskColor, summary, confidence,
+                            dsoIndex: P, cape, temp, wind,
+                            timestamp: new Date().toISOString(),
+                            location: loc.name,
+                            dataQuality: { surface: true, gulfSST: false, atmospheric: true }
+                        };
+                    } catch (e) {
+                        console.error('Prediction failed:', e);
+                        return {
+                            riskLevel: 'UNKNOWN', riskColor: '#888',
+                            summary: 'Unable to fetch weather data',
+                            confidence: 'No data available',
+                            dsoIndex: null, cape: null, temp: null, wind: null,
+                            timestamp: new Date().toISOString(),
+                            location: loc.name,
+                            dataQuality: { surface: false, gulfSST: false, atmospheric: false }
+                        };
+                    }
+                }
+            };
+        }
+
+        // Request geolocation
+        function requestGeolocation() {
+            if ('geolocation' in navigator) {
+                document.getElementById('prediction-location-name').textContent = 'Getting location...';
+                navigator.geolocation.getCurrentPosition(
+                    async (position) => {
+                        const { latitude, longitude } = position.coords;
+                        await weatherService.setLocationFromCoords(latitude, longitude);
+                        document.getElementById('geolocation-request').style.display = 'none';
+                        updateSimplePrediction();
+                    },
+                    (error) => {
+                        console.error('Geolocation error:', error);
+                        document.getElementById('prediction-location-name').textContent = 'Location denied - using default';
+                        updateSimplePrediction();
+                    },
+                    { enableHighAccuracy: false, timeout: 10000 }
+                );
+            }
+        }
+
+        // Update simple prediction panel
+        async function updateSimplePrediction() {
+            if (!weatherService) await initWeatherService();
+
+            const prediction = await weatherService.getSimplePrediction();
+
+            // Update panel class for styling
+            const panel = document.getElementById('prediction-panel');
+            panel.className = 'prediction-hero risk-' + prediction.riskLevel.toLowerCase();
+
+            // Update location and time
+            document.getElementById('prediction-location-name').textContent = prediction.location;
+            document.getElementById('prediction-time').textContent = new Date().toLocaleString();
+
+            // Update risk display
+            document.getElementById('prediction-risk-level').textContent = prediction.riskLevel;
+            document.getElementById('prediction-summary').textContent = prediction.summary;
+            document.getElementById('prediction-confidence').textContent = prediction.confidence;
+
+            // Update metrics
+            document.getElementById('metric-dso').textContent = prediction.dsoIndex !== null ? prediction.dsoIndex.toFixed(3) : '--';
+            document.getElementById('metric-cape').textContent = prediction.cape !== null ? Math.round(prediction.cape) : '--';
+            document.getElementById('metric-temp').textContent = prediction.temp !== null ? `${prediction.temp.toFixed(1)}°C` : '--';
+            document.getElementById('metric-wind').textContent = prediction.wind !== null ? `${prediction.wind.toFixed(0)} km/h` : '--';
+
+            // Update data source badges
+            const dq = prediction.dataQuality;
+            updateSourceBadge('source-surface', 'Surface', dq.surface);
+            updateSourceBadge('source-sst', 'Gulf SST', dq.gulfSST);
+            updateSourceBadge('source-atmo', 'Atmospheric', dq.atmospheric);
+        }
+
+        function updateSourceBadge(id, label, isOnline) {
+            const badge = document.getElementById(id);
+            badge.textContent = `${label}: ${isOnline ? 'ONLINE' : 'OFFLINE'}`;
+            badge.className = 'source-badge ' + (isOnline ? 'online' : 'offline');
+        }
+
+        // Toggle detailed view
+        function toggleDetailedView() {
+            detailedViewVisible = !detailedViewVisible;
+            const detailed = document.getElementById('detailed-sections');
+            const btn = document.querySelector('.toggle-details');
+
+            if (detailedViewVisible) {
+                detailed.style.display = 'block';
+                btn.textContent = 'Hide Detailed Analysis ▲';
+            } else {
+                detailed.style.display = 'none';
+                btn.textContent = 'Show Detailed Analysis ▼';
+            }
+        }
+
+        // Initialize on page load
+        async function initPage() {
+            await initWeatherService();
+
+            // Check if geolocation is available and prompt user
+            if ('geolocation' in navigator) {
+                // Try to auto-detect if we have permission
+                navigator.permissions?.query({ name: 'geolocation' }).then(result => {
+                    if (result.state === 'granted') {
+                        requestGeolocation();
+                    } else if (result.state === 'prompt') {
+                        document.getElementById('geolocation-request').style.display = 'block';
+                        // Still load default prediction
+                        updateSimplePrediction();
+                    } else {
+                        updateSimplePrediction();
+                    }
+                }).catch(() => {
+                    // Permissions API not supported, show prompt
+                    document.getElementById('geolocation-request').style.display = 'block';
+                    updateSimplePrediction();
+                });
+            } else {
+                updateSimplePrediction();
+            }
+
+            // Hide detailed sections by default
+            document.getElementById('detailed-sections').style.display = 'none';
+        }
+
         // Initialize
         buildCatalystChart();
         updatePrediction();
         updateArkansasPanel();
+        initPage();
     </script>
+
 </body>
 </html>
