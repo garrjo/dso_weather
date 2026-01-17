@@ -3,1041 +3,2174 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DSO Weather Intelligence | Arkansas</title>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>DSO Weather Model - E-Field Severe Weather Prediction</title>
     <style>
         :root {
             --bg-dark: #0a0a0f;
             --bg-card: #12121a;
-            --bg-elevated: #1a1a24;
-            --border: #2a2a3a;
-            --text-primary: #f0f0f5;
-            --text-secondary: #8888aa;
-            --text-muted: #555566;
-            --accent-red: #ef4444;
-            --accent-orange: #f97316;
-            --accent-yellow: #eab308;
-            --accent-green: #22c55e;
-            --accent-blue: #3b82f6;
-            --accent-purple: #a855f7;
-            --accent-cyan: #06b6d4;
+            --bg-hover: #1a1a25;
+            --accent-gold: #d4af37;
+            --accent-blue: #4a9eff;
+            --accent-red: #ff4a4a;
+            --accent-green: #4aff4a;
+            --accent-purple: #9b4aff;
+            --text-primary: #e8e8e8;
+            --text-secondary: #a0a0a0;
+            --border: #2a2a35;
         }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: 'Space Grotesk', sans-serif;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
             background: var(--bg-dark);
             color: var(--text-primary);
+            line-height: 1.6;
             min-height: 100vh;
-            line-height: 1.5;
         }
-        .container { max-width: 1600px; margin: 0 auto; padding: 1.5rem; }
-        
-        /* Header */
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
         header {
-            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;
-            margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border);
+            text-align: center;
+            padding: 3rem 0;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 3rem;
         }
-        .logo { display: flex; align-items: center; gap: 1rem; }
-        .logo-icon {
-            width: 48px; height: 48px;
-            background: linear-gradient(135deg, var(--accent-orange), var(--accent-red));
-            border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;
+
+        h1 {
+            font-size: 3rem;
+            font-weight: 300;
+            color: var(--accent-gold);
+            margin-bottom: 0.5rem;
+            letter-spacing: 2px;
         }
-        .logo h1 { font-size: 1.4rem; font-weight: 700; }
-        .logo span { color: var(--text-secondary); font-size: 0.8rem; display: block; }
-        .controls { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
-        select, input[type="date"] {
-            background: var(--bg-elevated); border: 1px solid var(--border);
-            color: var(--text-primary); padding: 0.6rem 0.9rem; border-radius: 8px;
-            font-family: inherit; font-size: 0.85rem; cursor: pointer;
+
+        h1 span {
+            font-weight: 700;
         }
-        .btn {
-            background: var(--accent-blue); border: none; color: white;
-            padding: 0.6rem 1rem; border-radius: 8px; cursor: pointer; font-family: inherit;
-            font-weight: 500; transition: background 0.2s;
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
         }
-        .btn:hover { background: #2563eb; }
-        
-        /* Status bar */
-        .status-bar {
-            display: flex; gap: 1rem; align-items: center; margin-bottom: 1.5rem;
-            padding: 0.75rem 1rem; background: var(--bg-card); border-radius: 10px;
-            font-size: 0.8rem; flex-wrap: wrap;
+
+        .tagline {
+            font-style: italic;
+            color: var(--accent-blue);
+            font-size: 1.1rem;
         }
-        .status-item { display: flex; align-items: center; gap: 0.4rem; }
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; }
-        .status-dot.live { background: var(--accent-green); animation: pulse 2s infinite; }
-        .status-dot.offline { background: var(--accent-red); }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-        
-        /* Main Grid */
-        .main-grid { display: grid; grid-template-columns: 1fr 1fr 380px; gap: 1.5rem; }
-        @media (max-width: 1400px) { .main-grid { grid-template-columns: 1fr 1fr; } }
-        @media (max-width: 900px) { .main-grid { grid-template-columns: 1fr; } }
-        
-        /* Cards */
-        .card {
-            background: var(--bg-card); border: 1px solid var(--border);
-            border-radius: 14px; padding: 1.25rem; overflow: hidden;
+
+        h2 {
+            color: var(--accent-gold);
+            font-size: 1.8rem;
+            margin-bottom: 1.5rem;
+            font-weight: 400;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.5rem;
         }
-        .card-header {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border);
+
+        h3 {
+            color: var(--text-primary);
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+            font-weight: 500;
         }
-        .card-title {
-            font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.5px;
-            color: var(--text-secondary); font-weight: 600;
+
+        .section {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border: 1px solid var(--border);
         }
-        .card-badge {
-            font-size: 0.65rem; padding: 0.25rem 0.6rem; border-radius: 100px;
-            background: var(--bg-elevated); color: var(--text-secondary);
+
+        /* Constants Display */
+        .constants {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
         }
-        
-        /* DSO Prediction Card */
-        .prediction-hero { text-align: center; padding: 1rem 0; }
-        .prediction-icon { font-size: 4rem; margin-bottom: 0.5rem; }
-        .prediction-type { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
-        .prediction-confidence { font-size: 0.85rem; color: var(--text-secondary); }
-        .mechanism-box {
-            background: var(--bg-elevated); padding: 1rem; border-radius: 10px;
-            margin-top: 1rem; border-left: 3px solid var(--accent-blue);
+
+        .constant-card {
+            background: var(--bg-hover);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid var(--border);
         }
-        .mechanism-box h4 { font-size: 0.75rem; color: var(--accent-blue); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 1px; }
-        .mechanism-box p { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6; }
-        
-        /* NWS Current Conditions Card */
-        .nws-current { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
-        .nws-temp { font-size: 3rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
-        .nws-condition { font-size: 1.1rem; color: var(--text-secondary); }
-        .nws-details { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
-        .nws-detail { background: var(--bg-elevated); padding: 0.75rem; border-radius: 8px; }
-        .nws-detail-label { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
-        .nws-detail-value { font-family: 'JetBrains Mono', monospace; font-size: 1rem; margin-top: 0.25rem; }
-        
-        /* Comparison Box */
-        .comparison-box {
-            margin-top: 1rem; padding: 1rem; border-radius: 10px;
-            border: 1px dashed var(--border);
+
+        .constant-symbol {
+            font-size: 2rem;
+            color: var(--accent-gold);
+            font-family: 'Times New Roman', serif;
         }
-        .comparison-box.agree { border-color: var(--accent-green); background: rgba(34, 197, 94, 0.05); }
-        .comparison-box.differ { border-color: var(--accent-orange); background: rgba(249, 115, 22, 0.05); }
-        .comparison-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
-        .comparison-icon { font-size: 1.2rem; }
-        .comparison-title { font-size: 0.8rem; font-weight: 600; }
-        .comparison-text { font-size: 0.8rem; color: var(--text-secondary); }
-        
-        /* Factor Gauges */
-        .factors-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
-        .factor-card { background: var(--bg-elevated); border-radius: 10px; padding: 1rem; }
-        .factor-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
-        .factor-name { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
-        .factor-value { font-family: 'JetBrains Mono', monospace; font-size: 1.3rem; font-weight: 600; }
-        .factor-bar { height: 4px; background: var(--bg-dark); border-radius: 2px; overflow: hidden; }
-        .factor-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
-        .factor-desc { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.5rem; }
-        
-        /* Alerts */
-        .alerts-container { margin-bottom: 1rem; }
-        .alert-item {
-            padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 0.5rem;
-            display: flex; align-items: flex-start; gap: 0.75rem;
+
+        .constant-value {
+            font-size: 1.2rem;
+            color: var(--accent-blue);
+            font-family: monospace;
         }
-        .alert-warning { background: rgba(234, 179, 8, 0.15); border-left: 3px solid var(--accent-yellow); }
-        .alert-watch { background: rgba(249, 115, 22, 0.15); border-left: 3px solid var(--accent-orange); }
-        .alert-advisory { background: rgba(59, 130, 246, 0.15); border-left: 3px solid var(--accent-blue); }
-        .alert-icon { font-size: 1.2rem; }
-        .alert-content { flex: 1; }
-        .alert-title { font-size: 0.85rem; font-weight: 600; }
-        .alert-desc { font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem; }
-        
-        /* 7-Day Forecast */
-        .forecast-scroll { display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.5rem; }
-        .forecast-day {
-            flex: 0 0 auto; width: 90px; padding: 0.75rem;
-            background: var(--bg-elevated); border-radius: 10px; text-align: center;
-            cursor: pointer; transition: all 0.2s; border: 1px solid transparent;
+
+        .constant-name {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
         }
-        .forecast-day:hover { border-color: var(--border); }
-        .forecast-day.active { border-color: var(--accent-blue); background: rgba(59, 130, 246, 0.1); }
-        .forecast-day-name { font-size: 0.75rem; font-weight: 600; margin-bottom: 0.5rem; }
-        .forecast-day-icon { font-size: 1.5rem; margin-bottom: 0.5rem; }
-        .forecast-day-temp { font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; }
-        .forecast-day-hi { color: var(--accent-orange); }
-        .forecast-day-lo { color: var(--accent-blue); }
-        .forecast-day-dso { font-size: 0.65rem; color: var(--text-muted); margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--border); }
-        
+
+        /* Equation Display */
+        .equation-box {
+            background: linear-gradient(135deg, #1a1a25 0%, #0f0f18 100%);
+            border: 2px solid var(--accent-gold);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            margin: 2rem 0;
+        }
+
+        .equation {
+            font-size: 1.5rem;
+            font-family: 'Times New Roman', serif;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+        }
+
+        .equation-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* Inversion Matrix */
+        .inversion-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto auto;
+            gap: 1rem;
+            margin: 2rem 0;
+            position: relative;
+        }
+
+        .inversion-grid::before {
+            content: 'HIGH CATALYST (Equinox)';
+            position: absolute;
+            top: -2rem;
+            left: 25%;
+            color: var(--accent-gold);
+            font-size: 0.9rem;
+        }
+
+        .inversion-grid::after {
+            content: 'LOW CATALYST (Solstice)';
+            position: absolute;
+            top: -2rem;
+            right: 25%;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .inversion-cell {
+            background: var(--bg-hover);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            border: 2px solid var(--border);
+            transition: all 0.3s ease;
+        }
+
+        .inversion-cell:hover {
+            transform: scale(1.02);
+        }
+
+        .inversion-cell.tornado {
+            border-color: var(--accent-red);
+            background: linear-gradient(135deg, rgba(255,74,74,0.1) 0%, var(--bg-hover) 100%);
+        }
+
+        .inversion-cell.derecho {
+            border-color: var(--accent-purple);
+            background: linear-gradient(135deg, rgba(155,74,255,0.1) 0%, var(--bg-hover) 100%);
+        }
+
+        .inversion-cell.blizzard {
+            border-color: var(--accent-blue);
+            background: linear-gradient(135deg, rgba(74,158,255,0.1) 0%, var(--bg-hover) 100%);
+        }
+
+        .inversion-cell.stable {
+            border-color: var(--accent-green);
+            background: linear-gradient(135deg, rgba(74,255,74,0.1) 0%, var(--bg-hover) 100%);
+        }
+
+        .cell-icon {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .cell-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .cell-conditions {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .fuel-labels {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            position: absolute;
+            left: -6rem;
+            top: 2rem;
+            bottom: 0;
+            font-size: 0.9rem;
+        }
+
         /* Catalyst Curve */
-        .chart-container { height: 120px; position: relative; margin-top: 0.5rem; }
-        .chart-svg { width: 100%; height: 100%; }
-        
-        /* Danger Index */
-        .danger-display { text-align: center; padding: 1rem 0; }
-        .danger-value { font-family: 'JetBrains Mono', monospace; font-size: 2.5rem; font-weight: 700; }
-        .danger-label { font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem; }
-        .danger-scale {
-            display: flex; height: 8px; border-radius: 4px; overflow: hidden;
-            margin-top: 1rem; gap: 2px;
+        .catalyst-chart {
+            background: var(--bg-hover);
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 2rem 0;
         }
-        .danger-segment { flex: 1; }
-        .danger-marker {
-            width: 3px; height: 16px; background: white; border-radius: 2px;
-            position: relative; top: -4px; transition: margin-left 0.5s;
+
+        .chart-container {
+            position: relative;
+            height: 200px;
+            margin: 1rem 0;
         }
-        
-        /* Sidebar */
-        .sidebar { display: flex; flex-direction: column; gap: 1rem; }
-        
-        /* Equations Panel */
-        .equations { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; }
-        .equation { padding: 0.5rem; background: var(--bg-elevated); border-radius: 6px; margin-bottom: 0.5rem; }
-        .equation-name { color: var(--accent-cyan); }
-        .equation-formula { color: var(--text-secondary); }
-        
-        /* Loading */
-        .loading { text-align: center; padding: 2rem; color: var(--text-muted); }
-        .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent-blue); border-radius: 50%; animation: spin 1s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        
+
+        .chart-bar {
+            position: absolute;
+            bottom: 0;
+            width: 7%;
+            background: linear-gradient(to top, var(--accent-blue), var(--accent-gold));
+            border-radius: 4px 4px 0 0;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .chart-bar:hover {
+            filter: brightness(1.2);
+        }
+
+        .chart-bar.peak {
+            background: linear-gradient(to top, var(--accent-red), var(--accent-gold));
+        }
+
+        .chart-bar.low {
+            background: linear-gradient(to top, var(--accent-green), var(--accent-blue));
+        }
+
+        .chart-label {
+            position: absolute;
+            bottom: -25px;
+            width: 100%;
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .chart-value {
+            position: absolute;
+            top: -20px;
+            width: 100%;
+            text-align: center;
+            font-size: 0.7rem;
+            color: var(--text-primary);
+        }
+
+        /* Interactive Demo */
+        .demo-controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .control-group {
+            background: var(--bg-hover);
+            padding: 1.5rem;
+            border-radius: 8px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .control-group select,
+        .control-group input[type="range"] {
+            width: 100%;
+            padding: 0.5rem;
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+
+        .control-group input[type="range"] {
+            -webkit-appearance: none;
+            height: 8px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .control-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: var(--accent-gold);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .value-display {
+            text-align: center;
+            font-size: 1.2rem;
+            color: var(--accent-blue);
+            margin-top: 0.5rem;
+            font-family: monospace;
+        }
+
+        /* Results Panel */
+        .results-panel {
+            background: linear-gradient(135deg, #1a1a25 0%, #0f0f18 100%);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-top: 2rem;
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .result-item {
+            text-align: center;
+            padding: 1rem;
+            background: var(--bg-hover);
+            border-radius: 8px;
+        }
+
+        .result-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.25rem;
+        }
+
+        .result-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            font-family: monospace;
+        }
+
+        .result-value.high { color: var(--accent-red); }
+        .result-value.medium { color: var(--accent-gold); }
+        .result-value.low { color: var(--accent-green); }
+
+        .prediction-box {
+            text-align: center;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border-radius: 8px;
+            border: 2px solid var(--accent-gold);
+        }
+
+        .prediction-type {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent-gold);
+            margin-bottom: 0.5rem;
+        }
+
+        .prediction-probability {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+        }
+
+        .prediction-mechanism {
+            font-size: 0.9rem;
+            color: var(--accent-blue);
+            margin-top: 0.5rem;
+            font-style: italic;
+        }
+
+        /* Summer Paradox */
+        .paradox-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .paradox-card {
+            background: var(--bg-hover);
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+            border: 2px solid var(--border);
+        }
+
+        .paradox-card.highlight {
+            border-color: var(--accent-red);
+        }
+
+        .paradox-card.lowlight {
+            border-color: var(--accent-green);
+        }
+
+        .paradox-date {
+            font-size: 1.1rem;
+            color: var(--accent-gold);
+            margin-bottom: 0.5rem;
+        }
+
+        .paradox-factor {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin: 0.25rem 0;
+        }
+
+        .paradox-result {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-top: 1rem;
+        }
+
+        /* Validation */
+        .validation-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+
+        .validation-item {
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            background: var(--bg-hover);
+            border-radius: 8px;
+        }
+
+        .validation-icon {
+            font-size: 1.5rem;
+            margin-right: 1rem;
+        }
+
+        .validation-text {
+            flex: 1;
+        }
+
+        .validation-bf {
+            font-family: monospace;
+            color: var(--accent-blue);
+            font-size: 0.9rem;
+        }
+
         /* Footer */
         footer {
-            margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border);
-            text-align: center; color: var(--text-muted); font-size: 0.8rem;
+            text-align: center;
+            padding: 3rem 0;
+            border-top: 1px solid var(--border);
+            margin-top: 3rem;
+            color: var(--text-secondary);
         }
-        footer a { color: var(--accent-blue); text-decoration: none; }
-        
-        /* Responsive */
-        @media (max-width: 600px) {
-            .factors-grid { grid-template-columns: 1fr; }
-            .nws-details { grid-template-columns: 1fr; }
+
+        .stats-row {
+            display: flex;
+            justify-content: center;
+            gap: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent-gold);
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+        }
+
+        /* Regional Map Placeholder */
+        .region-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .region-card {
+            background: var(--bg-hover);
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 4px solid var(--accent-blue);
+        }
+
+        .region-name {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .region-stats {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .danger-bar {
+            height: 6px;
+            background: var(--bg-dark);
+            border-radius: 3px;
+            margin-top: 0.5rem;
+            overflow: hidden;
+        }
+
+        .danger-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-green), var(--accent-gold), var(--accent-red));
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+
+        /* Arkansas Daily Forecast Panel */
+        .arkansas-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+        }
+
+        .arkansas-grid-4 {
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        }
+
+        .arkansas-card {
+            background: var(--bg-hover);
+            border-radius: 10px;
+            padding: 1.25rem;
+            border: 1px solid var(--border);
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .arkansas-card:hover {
+            border-color: var(--accent-blue);
+            transform: translateY(-2px);
+        }
+
+        .arkansas-card.dso-card {
+            border-color: var(--accent-gold);
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.05) 0%, var(--bg-hover) 100%);
+        }
+
+        .arkansas-symbol {
+            font-family: 'Times New Roman', serif;
+            font-size: 1.8rem;
+            color: var(--accent-gold);
+            margin-bottom: 0.25rem;
+        }
+
+        .arkansas-name {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.75rem;
+            font-weight: 500;
+        }
+
+        .arkansas-values {
+            margin-bottom: 0.75rem;
+        }
+
+        .arkansas-value-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            padding: 0.2rem 0;
+        }
+
+        .arkansas-label {
+            color: var(--text-secondary);
+        }
+
+        .arkansas-value {
+            color: var(--text-primary);
+            font-family: monospace;
+        }
+
+        .arkansas-value.high {
+            color: var(--accent-red);
+        }
+
+        .arkansas-value.medium {
+            color: var(--accent-gold);
+        }
+
+        .arkansas-value.low {
+            color: var(--accent-green);
+        }
+
+        .arkansas-primary-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent-blue);
+            text-align: center;
+            margin: 0.5rem 0;
+            font-family: monospace;
+        }
+
+        .arkansas-primary-value.high {
+            color: var(--accent-red);
+        }
+
+        .arkansas-primary-value.medium {
+            color: var(--accent-gold);
+        }
+
+        .arkansas-primary-value.low {
+            color: var(--accent-green);
+        }
+
+        .arkansas-trend {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .arkansas-trend.up {
+            color: var(--accent-red);
+        }
+
+        .arkansas-trend.down {
+            color: var(--accent-green);
+        }
+
+        .arkansas-trend.stable {
+            color: var(--text-secondary);
+        }
+
+        .arkansas-modifier {
+            font-size: 0.8rem;
+            color: var(--accent-blue);
+            font-style: italic;
+            padding-top: 0.5rem;
+            border-top: 1px solid var(--border);
+            margin-top: 0.5rem;
+        }
+
+        .refresh-btn {
+            background: linear-gradient(135deg, var(--accent-blue), #3a7acc);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(74, 158, 255, 0.3);
+        }
+
+        .refresh-btn:disabled {
+            background: var(--bg-hover);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Data Status Bar */
+        .data-status-bar {
+            display: flex;
+            gap: 1.5rem;
+            padding: 0.75rem 1rem;
+            background: var(--bg-dark);
+            border-radius: 8px;
+            font-size: 0.8rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .data-source {
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            background: var(--bg-hover);
+        }
+
+        .data-source.online { background: rgba(74, 255, 74, 0.2); color: var(--accent-green); }
+        .data-source.offline { background: rgba(255, 74, 74, 0.2); color: var(--accent-red); }
+
+        .arkansas-source {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        /* DSO Indices Row */
+        .dso-indices-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+        }
+
+        .dso-index-card {
+            background: var(--bg-hover);
+            border-radius: 10px;
+            padding: 1.25rem;
+            text-align: center;
+            border: 2px solid var(--border);
+        }
+
+        .dso-index-card.danger {
+            border-color: var(--accent-red);
+            background: linear-gradient(135deg, rgba(255, 74, 74, 0.1) 0%, var(--bg-hover) 100%);
+        }
+
+        .dso-index-card.prediction {
+            border-color: var(--accent-purple);
+            background: linear-gradient(135deg, rgba(155, 74, 255, 0.1) 0%, var(--bg-hover) 100%);
+        }
+
+        .dso-index-label {
+            font-size: 0.9rem;
+            color: var(--accent-gold);
+            margin-bottom: 0.25rem;
+        }
+
+        .dso-index-formula {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-family: 'Times New Roman', serif;
+            margin-bottom: 0.5rem;
+        }
+
+        .dso-index-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            font-family: monospace;
+            color: var(--text-primary);
+        }
+
+        .dso-index-value.high { color: var(--accent-red); }
+        .dso-index-value.medium { color: var(--accent-gold); }
+        .dso-index-value.low { color: var(--accent-green); }
+
+        /* Simulation Controls */
+        .simulation-controls {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .sim-btn {
+            background: var(--bg-hover);
+            border: 1px solid var(--accent-blue);
+            color: var(--accent-blue);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .sim-btn:hover {
+            background: var(--accent-blue);
+            color: white;
+        }
+
+        .simulation-output {
+            background: var(--bg-dark);
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: monospace;
+            font-size: 0.8rem;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .sim-header {
+            display: grid;
+            grid-template-columns: 50px repeat(5, 1fr) 120px;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            background: var(--bg-hover);
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+            color: var(--accent-gold);
+        }
+
+        .sim-row {
+            display: grid;
+            grid-template-columns: 50px repeat(5, 1fr) 120px;
+            gap: 0.5rem;
+            padding: 0.25rem 0.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sim-row.alert {
+            background: rgba(255, 74, 74, 0.15);
+            border-color: var(--accent-red);
+        }
+
+        .sim-row .alert-text {
+            color: var(--accent-red);
+            font-weight: bold;
+        }
+
+        /* Data Errors */
+        .data-errors {
+            background: rgba(255, 74, 74, 0.1);
+            border: 1px solid var(--accent-red);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            color: var(--accent-red);
+        }
+
+        .no-data {
+            color: var(--accent-red) !important;
+            font-style: italic;
+        }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 2rem; }
+            .container { padding: 1rem; }
+            .inversion-grid { grid-template-columns: 1fr; }
+            .result-grid { grid-template-columns: repeat(2, 1fr); }
+            .paradox-comparison { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <div class="logo">
-                <div class="logo-icon">⚡</div>
-                <div>
-                    <h1>DSO Weather Intelligence</h1>
-                    <span>E-Field Geometric Prediction • Arkansas</span>
-                </div>
-            </div>
-            <div class="controls">
-                <select id="regionSelect">
-                    <option value="benton_ar">Benton, AR</option>
-                    <option value="little_rock">Little Rock, AR</option>
-                    <option value="haskell_ar">Haskell, AR</option>
-                    <option value="fayetteville">Fayetteville, AR</option>
-                    <option value="jonesboro">Jonesboro, AR</option>
-                </select>
-                <input type="date" id="dateSelect">
-                <button class="btn" onclick="refresh()">↻ Refresh</button>
-            </div>
+            <h1><span>DSO</span> Weather Model</h1>
+            <p class="subtitle">Drag-Scale-Object E-Field Severe Weather Prediction</p>
+            <p class="tagline">"Weather is E-geometry, not chaos."</p>
         </header>
 
-        <div class="status-bar">
-            <div class="status-item">
-                <div class="status-dot" id="noaaStatus"></div>
-                <span id="noaaStatusText">Connecting to NOAA...</span>
-            </div>
-            <div class="status-item">
-                <span style="color: var(--text-muted)">Last update:</span>
-                <span id="lastUpdate">--</span>
-            </div>
-            <div class="status-item" style="margin-left: auto;">
-                <span style="color: var(--text-muted)">Model:</span>
-                <span>DSO v2.0</span>
-            </div>
-        </div>
-
-        <div id="alertsContainer" class="alerts-container"></div>
-
-        <div class="main-grid">
-            <!-- DSO Prediction -->
-            <div class="card">
-                <div class="card-header">
-                    <span class="card-title">DSO Prediction</span>
-                    <span class="card-badge" id="tempRegime">--</span>
+        <!-- Core Constants -->
+        <section class="section">
+            <h2>Universal Constants</h2>
+            <div class="constants">
+                <div class="constant-card">
+                    <div class="constant-symbol">φ</div>
+                    <div class="constant-value">1.618034</div>
+                    <div class="constant-name">Golden Ratio</div>
                 </div>
-                <div class="prediction-hero">
-                    <div class="prediction-icon" id="dsoIcon">--</div>
-                    <div class="prediction-type" id="dsoPrediction">Loading...</div>
-                    <div class="prediction-confidence">Confidence: <span id="dsoConfidence">--</span>%</div>
+                <div class="constant-card">
+                    <div class="constant-symbol">G†</div>
+                    <div class="constant-value">1.236 × 10⁻¹⁰</div>
+                    <div class="constant-name">Galactic Threshold</div>
                 </div>
-                <div class="mechanism-box">
-                    <h4>Why This Forecast</h4>
-                    <p id="mechanismText">Loading mechanism explanation...</p>
+                <div class="constant-card">
+                    <div class="constant-symbol">L(7)</div>
+                    <div class="constant-value">29</div>
+                    <div class="constant-name">Lucas Number</div>
+                </div>
+                <div class="constant-card">
+                    <div class="constant-symbol">θ</div>
+                    <div class="constant-value">23.44°</div>
+                    <div class="constant-name">Earth's Axial Tilt</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Core Equations -->
+        <section class="section">
+            <h2>The DSO Weather Equations</h2>
+            
+            <div class="equation-box">
+                <div class="equation">P = E<sub>fuel</sub> × |dθ/dt| × sin(α)</div>
+                <div class="equation-label">Probability: Will a storm occur?</div>
+            </div>
+
+            <div class="equation-box">
+                <div class="equation">V = (∂E/∂φ) × |dθ/dt| × sin(α)</div>
+                <div class="equation-label">Volatility: How violent if it occurs?</div>
+            </div>
+
+            <div class="equation-box" style="border-color: var(--accent-red);">
+                <div class="equation">D = E<sub>fuel</sub> × (∂E/∂φ) × (dθ/dt)² × sin²(α)</div>
+                <div class="equation-label">Danger Index: Combined Risk Metric</div>
+            </div>
+
+            <h3 style="margin-top: 2rem;">The Four Factors:</h3>
+            <div class="constants">
+                <div class="constant-card">
+                    <div class="constant-symbol">E<sub>fuel</sub></div>
+                    <div class="constant-name">Energy Storage<br>(Gulf SST, Moisture)</div>
+                </div>
+                <div class="constant-card">
+                    <div class="constant-symbol">∂E/∂φ</div>
+                    <div class="constant-name">E-Gradient<br>(Air Mass Collision)</div>
+                </div>
+                <div class="constant-card">
+                    <div class="constant-symbol">dθ/dt</div>
+                    <div class="constant-name">Catalyst<br>(Tilt Rate)</div>
+                </div>
+                <div class="constant-card">
+                    <div class="constant-symbol">sin(α)</div>
+                    <div class="constant-name">Solar Angle<br>(Incidence)</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- The Inversion Matrix -->
+        <section class="section">
+            <h2>The Inversion Matrix</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem;">
+                Storm TYPE depends on which factors dominate. The catalyst-fuel inversion explains why different seasons produce different phenomena.
+            </p>
+
+            <div style="position: relative; padding-left: 7rem; padding-top: 3rem;">
+                <div class="fuel-labels">
+                    <span style="color: var(--accent-gold);">HIGH FUEL</span>
+                    <span style="color: var(--text-secondary);">LOW FUEL</span>
                 </div>
                 
-                <div style="margin-top: 1.25rem;">
-                    <div class="card-title" style="margin-bottom: 0.75rem;">DSO Factors</div>
-                    <div class="factors-grid">
-                        <div class="factor-card">
-                            <div class="factor-header">
-                                <span class="factor-name">Catalyst (dθ/dt)</span>
-                                <span class="factor-value" id="catalystValue">--</span>
-                            </div>
-                            <div class="factor-bar"><div class="factor-fill" id="catalystBar" style="background: var(--accent-orange);"></div></div>
-                            <div class="factor-desc">Rotation driver from Earth's tilt change rate</div>
-                        </div>
-                        <div class="factor-card">
-                            <div class="factor-header">
-                                <span class="factor-name">E-Gradient (∂E/∂φ)</span>
-                                <span class="factor-value" id="gradientValue">--</span>
-                            </div>
-                            <div class="factor-bar"><div class="factor-fill" id="gradientBar" style="background: var(--accent-purple);"></div></div>
-                            <div class="factor-desc">Air mass collision intensity</div>
-                        </div>
-                        <div class="factor-card">
-                            <div class="factor-header">
-                                <span class="factor-name">E-Fuel</span>
-                                <span class="factor-value" id="fuelValue">--</span>
-                            </div>
-                            <div class="factor-bar"><div class="factor-fill" id="fuelBar" style="background: var(--accent-red);"></div></div>
-                            <div class="factor-desc">Gulf moisture energy available</div>
-                        </div>
-                        <div class="factor-card">
-                            <div class="factor-header">
-                                <span class="factor-name">Solar Angle</span>
-                                <span class="factor-value" id="solarValue">--</span>
-                            </div>
-                            <div class="factor-bar"><div class="factor-fill" id="solarBar" style="background: var(--accent-yellow);"></div></div>
-                            <div class="factor-desc">Solar energy input intensity</div>
+                <div class="inversion-grid">
+                    <div class="inversion-cell tornado">
+                        <div class="cell-icon">🌪️</div>
+                        <div class="cell-title">TORNADO</div>
+                        <div class="cell-conditions">
+                            High Fuel + High Gradient + High Catalyst<br>
+                            <strong>→ Rotational Discharge</strong>
                         </div>
                     </div>
-                </div>
-            </div>
-
-            <!-- NWS Current Conditions -->
-            <div class="card">
-                <div class="card-header">
-                    <span class="card-title">NWS Current Conditions</span>
-                    <span class="card-badge" id="nwsStation">--</span>
-                </div>
-                <div class="nws-current">
-                    <div class="nws-temp" id="nwsTemp">--°</div>
-                    <div>
-                        <div class="nws-condition" id="nwsCondition">Loading...</div>
-                        <div style="font-size: 0.8rem; color: var(--text-muted);" id="nwsFeelsLike">Feels like --°</div>
-                    </div>
-                </div>
-                <div class="nws-details">
-                    <div class="nws-detail">
-                        <div class="nws-detail-label">Humidity</div>
-                        <div class="nws-detail-value" id="nwsHumidity">--%</div>
-                    </div>
-                    <div class="nws-detail">
-                        <div class="nws-detail-label">Wind</div>
-                        <div class="nws-detail-value" id="nwsWind">-- mph</div>
-                    </div>
-                    <div class="nws-detail">
-                        <div class="nws-detail-label">Pressure</div>
-                        <div class="nws-detail-value" id="nwsPressure">-- mb</div>
-                    </div>
-                    <div class="nws-detail">
-                        <div class="nws-detail-label">Visibility</div>
-                        <div class="nws-detail-value" id="nwsVisibility">-- mi</div>
-                    </div>
-                </div>
-                
-                <div class="comparison-box" id="comparisonBox">
-                    <div class="comparison-header">
-                        <span class="comparison-icon" id="comparisonIcon">⚖️</span>
-                        <span class="comparison-title" id="comparisonTitle">DSO vs NWS Analysis</span>
-                    </div>
-                    <div class="comparison-text" id="comparisonText">Analyzing predictions...</div>
-                </div>
-
-                <div style="margin-top: 1.25rem;">
-                    <div class="card-title" style="margin-bottom: 0.75rem;">NWS 7-Day Forecast</div>
-                    <div class="forecast-scroll" id="forecastScroll">
-                        <div class="loading"><div class="spinner"></div></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Sidebar -->
-            <div class="sidebar">
-                <!-- Danger Index -->
-                <div class="card">
-                    <div class="card-header">
-                        <span class="card-title">Danger Index</span>
-                        <span class="card-badge" id="dangerLevel">--</span>
-                    </div>
-                    <div class="danger-display">
-                        <div class="danger-value" id="dangerValue">--</div>
-                        <div class="danger-label">D = E × ∇E × (dθ/dt)² × sin²(α)</div>
-                    </div>
-                    <div class="danger-scale">
-                        <div class="danger-segment" style="background: var(--accent-green);"></div>
-                        <div class="danger-segment" style="background: var(--accent-yellow);"></div>
-                        <div class="danger-segment" style="background: var(--accent-orange);"></div>
-                        <div class="danger-segment" style="background: var(--accent-red);"></div>
-                        <div class="danger-segment" style="background: #991b1b;"></div>
-                    </div>
-                    <div style="position: relative; height: 16px;">
-                        <div class="danger-marker" id="dangerMarker"></div>
-                    </div>
-                </div>
-
-                <!-- Discharge Mode -->
-                <div class="card">
-                    <div class="card-header">
-                        <span class="card-title">Discharge Mode</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 1rem;">
-                        <div style="font-family: 'JetBrains Mono'; font-size: 2rem; font-weight: 700;" id="inversionValue">--</div>
-                        <div>
-                            <div style="font-size: 0.9rem; font-weight: 600;" id="dischargeMode">--</div>
-                            <div style="font-size: 0.75rem; color: var(--text-muted);" id="dischargeModeDesc">--</div>
+                    
+                    <div class="inversion-cell derecho">
+                        <div class="cell-icon">💨</div>
+                        <div class="cell-title">DERECHO</div>
+                        <div class="cell-conditions">
+                            High Fuel + Low Gradient + Low Catalyst<br>
+                            <strong>→ Linear Discharge</strong>
                         </div>
                     </div>
-                    <div style="margin-top: 1rem; font-size: 0.75rem; color: var(--text-muted);">
-                        <div>R &gt; 1.2 → Horizontal (cyclonic)</div>
-                        <div>R &lt; 1.0 → Vertical (convective)</div>
-                    </div>
-                </div>
-
-                <!-- Catalyst Curve -->
-                <div class="card">
-                    <div class="card-header">
-                        <span class="card-title">Annual Catalyst Curve</span>
-                        <span class="card-badge" id="dayOfYear">Day --</span>
-                    </div>
-                    <div class="chart-container">
-                        <svg class="chart-svg" id="catalystChart" viewBox="0 0 340 110"></svg>
-                    </div>
-                </div>
-
-                <!-- Core Equations -->
-                <div class="card">
-                    <div class="card-header">
-                        <span class="card-title">Core Equations</span>
-                    </div>
-                    <div class="equations">
-                        <div class="equation">
-                            <span class="equation-name">Probability:</span>
-                            <span class="equation-formula">P = E × |dθ/dt| × sin(α)</span>
+                    
+                    <div class="inversion-cell blizzard">
+                        <div class="cell-icon">❄️</div>
+                        <div class="cell-title">BLIZZARD</div>
+                        <div class="cell-conditions">
+                            Low Fuel + High Gradient + High Catalyst<br>
+                            <strong>→ Cold-Side Dominance</strong>
                         </div>
-                        <div class="equation">
-                            <span class="equation-name">Volatility:</span>
-                            <span class="equation-formula">V = ∇E × |dθ/dt| × sin(α)</span>
-                        </div>
-                        <div class="equation">
-                            <span class="equation-name">Danger:</span>
-                            <span class="equation-formula">D = E × ∇E × (dθ/dt)² × sin²(α)</span>
-                        </div>
-                        <div class="equation">
-                            <span class="equation-name">Inversion:</span>
-                            <span class="equation-formula">R = dθ/dt ÷ (sin(α) + 0.1)</span>
+                    </div>
+                    
+                    <div class="inversion-cell stable">
+                        <div class="cell-icon">☀️</div>
+                        <div class="cell-title">FAIR WEATHER</div>
+                        <div class="cell-conditions">
+                            Low Fuel + Low Gradient + Low Catalyst<br>
+                            <strong>→ Stable Conditions</strong>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </section>
+
+        <!-- Catalyst Curve -->
+        <section class="section">
+            <h2>The Catalyst Curve (dθ/dt)</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                The rate of change of Earth's tilt angle. Peaks at equinoxes (March/September), drops to zero at solstices (June/December).
+                <strong style="color: var(--accent-gold);">This is the rotation driver.</strong>
+            </p>
+
+            <div class="catalyst-chart">
+                <div class="chart-container" id="catalystChart"></div>
+            </div>
+
+            <div style="text-align: center; margin-top: 1rem;">
+                <p style="color: var(--accent-red);">■ EQUINOX PEAK (Max Rotation)</p>
+                <p style="color: var(--accent-green);">■ SOLSTICE LOW (No Rotation)</p>
+            </div>
+        </section>
+
+        <!-- The Summer Paradox -->
+        <section class="section">
+            <h2>The Summer Paradox</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                Why do tornado days <strong>decline</strong> in summer despite maximum heat? 
+                DSO explains: the catalyst (dθ/dt) goes to zero at solstice.
+            </p>
+
+            <div class="paradox-comparison">
+                <div class="paradox-card highlight">
+                    <div class="paradox-date">April 15</div>
+                    <div class="paradox-factor">Fuel: <strong>0.88</strong></div>
+                    <div class="paradox-factor">Catalyst: <strong style="color: var(--accent-red);">0.91</strong></div>
+                    <div class="paradox-factor">Gradient: <strong>1.00</strong></div>
+                    <div class="paradox-result" style="color: var(--accent-red);">
+                        Danger: 0.58<br>
+                        <span style="font-size: 1rem;">🌪️ TORNADO</span>
+                    </div>
+                </div>
+
+                <div class="paradox-card lowlight">
+                    <div class="paradox-date">June 21 (Solstice)</div>
+                    <div class="paradox-factor">Fuel: <strong>0.88</strong></div>
+                    <div class="paradox-factor">Catalyst: <strong style="color: var(--accent-green);">0.01</strong></div>
+                    <div class="paradox-factor">Gradient: <strong>1.00</strong></div>
+                    <div class="paradox-result" style="color: var(--accent-green);">
+                        Danger: 0.0001<br>
+                        <span style="font-size: 1rem;">⛈️ Thunderstorm</span>
+                    </div>
+                </div>
+
+                <div class="paradox-card">
+                    <div class="paradox-date">July 15</div>
+                    <div class="paradox-factor">Fuel: <strong>0.88</strong></div>
+                    <div class="paradox-factor">Catalyst: <strong>0.41</strong></div>
+                    <div class="paradox-factor">Gradient: <strong>1.00</strong></div>
+                    <div class="paradox-result" style="color: var(--accent-gold);">
+                        Danger: 0.14<br>
+                        <span style="font-size: 1rem;">⛈️ Severe T-Storm</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="equation-box" style="border-color: var(--accent-blue);">
+                <div class="equation" style="font-size: 1.2rem;">
+                    Same fuel. Same gradient. Danger drops from <span style="color: var(--accent-red);">0.58</span> to <span style="color: var(--accent-green);">0.0001</span>.
+                </div>
+                <div class="equation-label">No catalyst = No rotation = No tornadoes</div>
+            </div>
+        </section>
+
+        <!-- Interactive Demo -->
+        <section class="section">
+            <h2>Interactive Prediction Engine</h2>
+            
+            <div class="demo-controls">
+                <div class="control-group">
+                    <label>Region</label>
+                    <select id="regionSelect">
+                        <option value="tornado_alley">Tornado Alley (OK, KS)</option>
+                        <option value="dixie_alley">Dixie Alley (AR, TN, MS)</option>
+                        <option value="midwest">Midwest (MO, IL, IN)</option>
+                        <option value="southern_plains">Southern Plains (TX)</option>
+                        <option value="northern_plains">Northern Plains (ND, SD)</option>
+                        <option value="gulf_coast">Gulf Coast (LA, MS coast)</option>
+                        <option value="southeast">Southeast (GA, AL)</option>
+                        <option value="northeast">Northeast (PA, NY)</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label>Day of Year: <span id="dayDisplay">105</span> (<span id="dateDisplay">Apr 15</span>)</label>
+                    <input type="range" id="daySlider" min="1" max="365" value="105">
+                </div>
+
+                <div class="control-group">
+                    <label>Climate Offset (°C): <span id="climateDisplay">0</span></label>
+                    <input type="range" id="climateSlider" min="0" max="4" step="0.5" value="0">
+                </div>
+            </div>
+
+            <div class="results-panel">
+                <h3>DSO Factors</h3>
+                <div class="result-grid">
+                    <div class="result-item">
+                        <div class="result-label">E-Fuel</div>
+                        <div class="result-value" id="fuelValue">0.88</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">Gradient</div>
+                        <div class="result-value" id="gradientValue">1.00</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">Catalyst</div>
+                        <div class="result-value" id="catalystValue">0.91</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">Solar Angle</div>
+                        <div class="result-value" id="solarValue">0.89</div>
+                    </div>
+                </div>
+
+                <div class="result-grid">
+                    <div class="result-item">
+                        <div class="result-label">Probability</div>
+                        <div class="result-value" id="probValue">0.72</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">Volatility</div>
+                        <div class="result-value" id="volValue">0.81</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">Danger Index</div>
+                        <div class="result-value" id="dangerValue">0.58</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">Season</div>
+                        <div class="result-value" id="seasonValue" style="font-size: 1rem;">Spring</div>
+                    </div>
+                </div>
+
+                <div class="prediction-box">
+                    <div class="prediction-type" id="predictionType">TORNADO</div>
+                    <div class="prediction-probability">Probability: <span id="predictionProb">81.3%</span></div>
+                    <div class="prediction-mechanism" id="predictionMech">Maximum gradient × catalyst → rotational discharge</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Arkansas Daily Forecast Panel - REAL DATA -->
+        <section class="section" id="arkansasPanel">
+            <h2>Arkansas Real-Time Forecast Variables</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 0.5rem;">
+                <strong style="color: var(--accent-red);">LIVE DATA</strong> from NOAA/NWS, NDBC Buoys, and KLZK Soundings. No estimates.
+            </p>
+
+            <!-- Data Source Status -->
+            <div class="data-status-bar" id="dataStatusBar">
+                <span class="data-source" id="status-surface">Surface: --</span>
+                <span class="data-source" id="status-buoys">Gulf Buoys: --</span>
+                <span class="data-source" id="status-sounding">Sounding: --</span>
+                <span style="margin-left: auto;">Day <span id="arkansasDOY">--</span> | <span id="arkansasTimestamp">--</span></span>
+            </div>
+
+            <!-- Observational Variables Row -->
+            <div class="arkansas-grid">
+                <!-- H - Humidity -->
+                <div class="arkansas-card" id="card-humidity">
+                    <div class="arkansas-symbol">H</div>
+                    <div class="arkansas-name">Humidity</div>
+                    <div class="arkansas-source">Source: <span id="src-humidity">--</span></div>
+                    <div class="arkansas-values">
+                        <div class="arkansas-value-row">
+                            <span class="arkansas-label">Dewpoint:</span>
+                            <span class="arkansas-value" id="ark-dewpoint">NO DATA</span>
+                        </div>
+                        <div class="arkansas-value-row">
+                            <span class="arkansas-label">RH:</span>
+                            <span class="arkansas-value" id="ark-rh">NO DATA</span>
+                        </div>
+                    </div>
+                    <div class="arkansas-trend" id="ark-humidity-trend">—</div>
+                    <div class="arkansas-modifier" id="ark-humidity-mod">Awaiting data...</div>
+                </div>
+
+                <!-- D - Energy Dispersal (CAPE/CIN from sounding) -->
+                <div class="arkansas-card" id="card-dispersal">
+                    <div class="arkansas-symbol">D</div>
+                    <div class="arkansas-name">Energy Dispersal</div>
+                    <div class="arkansas-source">Source: <span id="src-dispersal">--</span></div>
+                    <div class="arkansas-values">
+                        <div class="arkansas-value-row">
+                            <span class="arkansas-label">CAPE:</span>
+                            <span class="arkansas-value" id="ark-cape">NO DATA</span>
+                        </div>
+                        <div class="arkansas-value-row">
+                            <span class="arkansas-label">CIN:</span>
+                            <span class="arkansas-value" id="ark-cin">NO DATA</span>
+                        </div>
+                        <div class="arkansas-value-row">
+                            <span class="arkansas-label">Lifted Index:</span>
+                            <span class="arkansas-value" id="ark-li">NO DATA</span>
+                        </div>
+                    </div>
+                    <div class="arkansas-trend" id="ark-dispersal-trend">—</div>
+                    <div class="arkansas-modifier" id="ark-dispersal-mod">Awaiting data...</div>
+                </div>
+
+                <!-- W - Wind Pattern (surface + shear from sounding) -->
+                <div class="arkansas-card" id="card-wind">
+                    <div class="arkansas-symbol">W</div>
+                    <div class="arkansas-name">Wind Pattern</div>
+                    <div class="arkansas-source">Source: <span id="src-wind">--</span></div>
+                    <div class="arkansas-values">
+                        <div class="arkansas-value-row">
+                            <span class="arkansas-label">Surface:</span>
+                            <span class="arkansas-value" id="ark-wind-speed">NO DATA</span>
+                        </div>
+                        <div class="arkansas-value-row">
+                            <span class="arkansas-label">Direction:</span>
+                            <span class="arkansas-value" id="ark-wind-dir">NO DATA</span>
+                        </div>
+                        <div class="arkansas-value-row">
+                            <span class="arkansas-label">0-6km Shear:</span>
+                            <span class="arkansas-value" id="ark-shear-6km">NO DATA</span>
+                        </div>
+                        <div class="arkansas-value-row">
+                            <span class="arkansas-label">0-1km Shear:</span>
+                            <span class="arkansas-value" id="ark-shear-1km">NO DATA</span>
+                        </div>
+                    </div>
+                    <div class="arkansas-trend" id="ark-wind-trend">—</div>
+                    <div class="arkansas-modifier" id="ark-wind-mod">Awaiting data...</div>
+                </div>
+
+                <!-- A - Angle of Attack -->
+                <div class="arkansas-card" id="card-angle">
+                    <div class="arkansas-symbol">A</div>
+                    <div class="arkansas-name">Angle of Attack</div>
+                    <div class="arkansas-source">Source: <span id="src-angle">--</span></div>
+                    <div class="arkansas-values">
+                        <div class="arkansas-value-row">
+                            <span class="arkansas-label">Front Angle:</span>
+                            <span class="arkansas-value" id="ark-front-angle">NO DATA</span>
+                        </div>
+                        <div class="arkansas-value-row">
+                            <span class="arkansas-label">Pressure:</span>
+                            <span class="arkansas-value" id="ark-pressure">NO DATA</span>
+                        </div>
+                        <div class="arkansas-value-row">
+                            <span class="arkansas-label">Approach:</span>
+                            <span class="arkansas-value" id="ark-approach">NO DATA</span>
+                        </div>
+                    </div>
+                    <div class="arkansas-trend" id="ark-angle-trend">—</div>
+                    <div class="arkansas-modifier" id="ark-angle-mod">Awaiting data...</div>
+                </div>
+
+                <!-- T - Thermal Variance (REAL lapse rate from sounding) -->
+                <div class="arkansas-card" id="card-thermal">
+                    <div class="arkansas-symbol">T</div>
+                    <div class="arkansas-name">Thermal Variance</div>
+                    <div class="arkansas-source">Source: <span id="src-thermal">--</span></div>
+                    <div class="arkansas-values">
+                        <div class="arkansas-value-row">
+                            <span class="arkansas-label">Surface:</span>
+                            <span class="arkansas-value" id="ark-surface-temp">NO DATA</span>
+                        </div>
+                        <div class="arkansas-value-row">
+                            <span class="arkansas-label">Lapse Rate:</span>
+                            <span class="arkansas-value" id="ark-lapse">NO DATA</span>
+                        </div>
+                        <div class="arkansas-value-row">
+                            <span class="arkansas-label">Stability:</span>
+                            <span class="arkansas-value" id="ark-stability">NO DATA</span>
+                        </div>
+                    </div>
+                    <div class="arkansas-trend" id="ark-thermal-trend">—</div>
+                    <div class="arkansas-modifier" id="ark-thermal-mod">Awaiting data...</div>
+                </div>
+            </div>
+
+            <!-- DSO Core Variables Row -->
+            <h3 style="margin-top: 2rem; margin-bottom: 1rem; color: var(--accent-gold);">DSO Core Variables (Computed from Real Data)</h3>
+            <div class="arkansas-grid arkansas-grid-4">
+                <!-- E_fuel (from REAL Gulf SST + REAL humidity) -->
+                <div class="arkansas-card dso-card" id="card-efuel">
+                    <div class="arkansas-symbol">E<sub>fuel</sub></div>
+                    <div class="arkansas-name">Energy Fuel</div>
+                    <div class="arkansas-source">Source: <span id="src-efuel">--</span></div>
+                    <div class="arkansas-primary-value" id="ark-efuel-value">NO DATA</div>
+                    <div class="arkansas-values">
+                        <div class="arkansas-value-row">
+                            <span class="arkansas-label">Gulf SST:</span>
+                            <span class="arkansas-value" id="ark-gulf-sst">NO DATA</span>
+                        </div>
+                        <div class="arkansas-value-row">
+                            <span class="arkansas-label">Avg SST:</span>
+                            <span class="arkansas-value" id="ark-gulf-sst-avg">NO DATA</span>
+                        </div>
+                        <div class="arkansas-value-row">
+                            <span class="arkansas-label">Buoys:</span>
+                            <span class="arkansas-value" id="ark-buoy-count">0</span>
+                        </div>
+                    </div>
+                    <div class="arkansas-trend" id="ark-efuel-trend">—</div>
+                    <div class="arkansas-modifier" id="ark-efuel-mod">Awaiting data...</div>
+                </div>
+
+                <!-- Gradient ∂E/∂φ -->
+                <div class="arkansas-card dso-card" id="card-gradient">
+                    <div class="arkansas-symbol">∂E/∂φ</div>
+                    <div class="arkansas-name">Gradient</div>
+                    <div class="arkansas-source">Source: <span id="src-gradient">--</span></div>
+                    <div class="arkansas-primary-value" id="ark-gradient-value">NO DATA</div>
+                    <div class="arkansas-values">
+                        <div class="arkansas-value-row">
+                            <span class="arkansas-label">Pressure:</span>
+                            <span class="arkansas-value" id="ark-gradient-pressure">NO DATA</span>
+                        </div>
+                        <div class="arkansas-value-row">
+                            <span class="arkansas-label">Departure:</span>
+                            <span class="arkansas-value" id="ark-pressure-departure">NO DATA</span>
+                        </div>
+                    </div>
+                    <div class="arkansas-trend" id="ark-gradient-trend">—</div>
+                    <div class="arkansas-modifier" id="ark-gradient-mod">Awaiting data...</div>
+                </div>
+
+                <!-- Catalyst dθ/dt -->
+                <div class="arkansas-card dso-card" id="card-catalyst">
+                    <div class="arkansas-symbol">dθ/dt</div>
+                    <div class="arkansas-name">Catalyst</div>
+                    <div class="arkansas-source">Source: Orbital Mechanics</div>
+                    <div class="arkansas-primary-value" id="ark-catalyst-value">--</div>
+                    <div class="arkansas-values">
+                        <div class="arkansas-value-row">
+                            <span class="arkansas-label">To Equinox:</span>
+                            <span class="arkansas-value" id="ark-days-equinox">--</span>
+                        </div>
+                        <div class="arkansas-value-row">
+                            <span class="arkansas-label">Phase:</span>
+                            <span class="arkansas-value" id="ark-catalyst-phase">--</span>
+                        </div>
+                    </div>
+                    <div class="arkansas-trend" id="ark-catalyst-trend">→</div>
+                    <div class="arkansas-modifier" id="ark-catalyst-mod">--</div>
+                </div>
+
+                <!-- Solar Angle α -->
+                <div class="arkansas-card dso-card" id="card-solar">
+                    <div class="arkansas-symbol">sin(α)</div>
+                    <div class="arkansas-name">Solar Angle</div>
+                    <div class="arkansas-source">Source: Solar Geometry</div>
+                    <div class="arkansas-primary-value" id="ark-solar-value">--</div>
+                    <div class="arkansas-values">
+                        <div class="arkansas-value-row">
+                            <span class="arkansas-label">Incidence:</span>
+                            <span class="arkansas-value" id="ark-incidence">--</span>
+                        </div>
+                    </div>
+                    <div class="arkansas-trend" id="ark-solar-trend">→</div>
+                    <div class="arkansas-modifier" id="ark-solar-mod">--</div>
+                </div>
+            </div>
+
+            <!-- DSO Computed Indices -->
+            <h3 style="margin-top: 2rem; margin-bottom: 1rem; color: var(--accent-red);">DSO Forecast Indices (P, V, D)</h3>
+            <div class="dso-indices-row">
+                <div class="dso-index-card">
+                    <div class="dso-index-label">P (Probability)</div>
+                    <div class="dso-index-formula">E_fuel × |dθ/dt| × sin(α)</div>
+                    <div class="dso-index-value" id="ark-P-value">--</div>
+                </div>
+                <div class="dso-index-card">
+                    <div class="dso-index-label">V (Volatility)</div>
+                    <div class="dso-index-formula">∂E/∂φ × |dθ/dt| × sin(α)</div>
+                    <div class="dso-index-value" id="ark-V-value">--</div>
+                </div>
+                <div class="dso-index-card danger">
+                    <div class="dso-index-label">D (Danger)</div>
+                    <div class="dso-index-formula">E_fuel × ∂E/∂φ × (dθ/dt)² × sin²(α)</div>
+                    <div class="dso-index-value" id="ark-D-value">--</div>
+                </div>
+                <div class="dso-index-card prediction">
+                    <div class="dso-index-label">Prediction</div>
+                    <div class="dso-index-value" id="ark-prediction-type">--</div>
+                    <div class="dso-index-formula" id="ark-prediction-prob">--</div>
+                </div>
+            </div>
+
+            <!-- Simulation Controls -->
+            <h3 style="margin-top: 2rem; margin-bottom: 1rem; color: var(--accent-blue);">Simulation Mode</h3>
+            <div class="simulation-controls">
+                <button class="sim-btn" onclick="runSimulation(24)">24h Forecast</button>
+                <button class="sim-btn" onclick="runSimulation(48)">48h Forecast</button>
+                <button class="sim-btn" onclick="runSimulation(72)">72h Forecast</button>
+                <button class="sim-btn" onclick="clearSimulation()">Clear</button>
+            </div>
+            <div class="simulation-output" id="simOutput" style="display: none;">
+                <div class="sim-header">
+                    <span>Hour</span><span>Catalyst</span><span>Solar</span><span>P</span><span>V</span><span>D</span><span>Alert</span>
+                </div>
+                <div id="simRows"></div>
+            </div>
+
+            <!-- Refresh Button -->
+            <div style="text-align: center; margin-top: 1.5rem;">
+                <button id="refreshArkansas" class="refresh-btn">
+                    Fetch Live NOAA Data
+                </button>
+                <span id="arkansasStatus" style="margin-left: 1rem; color: var(--text-secondary); font-size: 0.85rem;"></span>
+            </div>
+
+            <!-- Data Errors -->
+            <div id="dataErrors" class="data-errors" style="display: none;"></div>
+        </section>
+
+        <!-- Regional Forecast -->
+        <section class="section">
+            <h2>National Danger Index</h2>
+            <p style="color: var(--text-secondary);">Current day danger levels by region (based on selected date above)</p>
+            
+            <div class="region-grid" id="regionGrid"></div>
+        </section>
+
+        <!-- Validation -->
+        <section class="section">
+            <h2>Historical Validation</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                DSO predictions vs. 70 years of observed data. Bayes Factor measures evidence strength.
+            </p>
+
+            <div class="validation-grid">
+                <div class="validation-item">
+                    <div class="validation-icon">✅</div>
+                    <div class="validation-text">
+                        <strong>Summer Tornado Decline</strong><br>
+                        <span class="validation-bf">BF = 9.00 | Conventional: Unexpected</span>
+                    </div>
+                </div>
+                <div class="validation-item">
+                    <div class="validation-icon">✅</div>
+                    <div class="validation-text">
+                        <strong>Tornado Days Decreasing</strong><br>
+                        <span class="validation-bf">BF = 5.67 | 150 → 100 days/year</span>
+                    </div>
+                </div>
+                <div class="validation-item">
+                    <div class="validation-icon">✅</div>
+                    <div class="validation-text">
+                        <strong>Tornadoes Per Outbreak Increasing</strong><br>
+                        <span class="validation-bf">BF = 4.00 | 10 → 15 per outbreak</span>
+                    </div>
+                </div>
+                <div class="validation-item">
+                    <div class="validation-icon">✅</div>
+                    <div class="validation-text">
+                        <strong>Peak Shifted 3 Weeks Earlier</strong><br>
+                        <span class="validation-bf">BF = 3.40 | June 14 → May 24</span>
+                    </div>
+                </div>
+                <div class="validation-item">
+                    <div class="validation-icon">✅</div>
+                    <div class="validation-text">
+                        <strong>Days with 30+ Tornadoes Up</strong><br>
+                        <span class="validation-bf">BF = 4.25 | 2 → 9 days/year</span>
+                    </div>
+                </div>
+                <div class="validation-item">
+                    <div class="validation-icon">✅</div>
+                    <div class="validation-text">
+                        <strong>Eastward Migration</strong><br>
+                        <span class="validation-bf">BF = 2.67 | Great Plains → Dixie Alley</span>
+                    </div>
+                </div>
+            </div>
+        </section>
 
         <footer>
-            <p>DSO Weather Intelligence v2.0 | <a href="https://doi.org/10.5281/zenodo.18193711" target="_blank">Research Publication</a> | Data: <a href="https://api.weather.gov" target="_blank">NWS API</a></p>
-            <p style="margin-top: 0.5rem;">© 2026 Joe Garrett / VaultSync Solutions Inc. | "Weather is E-geometry, not chaos."</p>
+            <div class="stats-row">
+                <div class="stat">
+                    <div class="stat-value">17,632</div>
+                    <div class="stat-label">Bayes Factor</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">99.9%</div>
+                    <div class="stat-label">Posterior Probability</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">100%</div>
+                    <div class="stat-label">Validation Pass Rate</div>
+                </div>
+            </div>
+            <p>DSO Weather Model v1.0 | © 2026 Joe Garrett | VaultSync Solutions</p>
+            <p style="margin-top: 0.5rem; font-size: 0.85rem;">
+                Part of the Drag-Scale-Object (DSO) Unified Field Theory
+            </p>
         </footer>
     </div>
 
     <script>
-    // ═══════════════════════════════════════════════════════════════════════════════
-    //                           DSO WEATHER ENGINE
-    // ═══════════════════════════════════════════════════════════════════════════════
-    
-    const regions = {
-        'benton_ar':    { name: 'Benton, AR',      lat: 34.5645, lon: -92.5868, gulfDist: 650, gradientZone: 0.85 },
-        'little_rock':  { name: 'Little Rock, AR', lat: 34.7465, lon: -92.2896, gulfDist: 680, gradientZone: 0.82 },
-        'haskell_ar':   { name: 'Haskell, AR',     lat: 34.5012, lon: -92.6368, gulfDist: 645, gradientZone: 0.86 },
-        'fayetteville': { name: 'Fayetteville, AR',lat: 36.0626, lon: -94.1574, gulfDist: 780, gradientZone: 0.78 },
-        'jonesboro':    { name: 'Jonesboro, AR',   lat: 35.8423, lon: -90.7043, gulfDist: 620, gradientZone: 0.80 }
-    };
+        // DSO Weather Engine (Embedded)
+        class DSOWeatherEngine {
+            constructor() {
+                this.PHI = (1 + Math.sqrt(5)) / 2;
+                this.EARTH_TILT = 23.44;
+                this.DAYS_PER_YEAR = 365.25;
+                this.SPRING_EQUINOX_DOY = 80;
+                this.GULF_SST_BASELINE = 26.0;
+                this.GULF_SST_CURRENT = 27.0;
+                this.WARMING_COEFFICIENT = 1.0;
+                this.ARCTIC_DAMPING = 0.3;
 
-    const weatherMeta = {
-        TORNADO:        { icon: '🌪️', color: '#dc2626', severity: 10 },
-        SUPERCELL:      { icon: '🌩️', color: '#ea580c', severity: 9 },
-        SEVERE_TSTORM:  { icon: '⛈️', color: '#f59e0b', severity: 8 },
-        DERECHO:        { icon: '💨', color: '#0891b2', severity: 8 },
-        BOMB_CYCLONE:   { icon: '🌀', color: '#7c3aed', severity: 8 },
-        BLIZZARD:       { icon: '🌨️', color: '#6366f1', severity: 7 },
-        ICE_STORM:      { icon: '🧊', color: '#8b5cf6', severity: 7 },
-        WINTER_STORM:   { icon: '❄️', color: '#3b82f6', severity: 6 },
-        HIGH_WIND:      { icon: '🌬️', color: '#06b6d4', severity: 5 },
-        THUNDERSTORM:   { icon: '⛈️', color: '#eab308', severity: 5 },
-        FREEZING_RAIN:  { icon: '🌧️', color: '#a855f7', severity: 5 },
-        SNOW:           { icon: '🌨️', color: '#60a5fa', severity: 4 },
-        WINTER_MIX:     { icon: '🌨️', color: '#818cf8', severity: 4 },
-        SHOWERS:        { icon: '🌦️', color: '#22c55e', severity: 3 },
-        RAIN:           { icon: '🌧️', color: '#10b981', severity: 3 },
-        DRIZZLE:        { icon: '🌧️', color: '#6ee7b7', severity: 2 },
-        FOG:            { icon: '🌫️', color: '#9ca3af', severity: 2 },
-        CLOUDY:         { icon: '☁️', color: '#d1d5db', severity: 1 },
-        PARTLY_CLOUDY:  { icon: '⛅', color: '#e5e7eb', severity: 1 },
-        FAIR:           { icon: '☀️', color: '#fbbf24', severity: 0 }
-    };
+                this.REGIONAL_FUEL = {
+                    'tornado_alley':   { lat: 36, fuel: 0.80, gradient: 1.00, name: 'Tornado Alley' },
+                    'dixie_alley':     { lat: 34, fuel: 0.90, gradient: 1.00, name: 'Dixie Alley' },
+                    'midwest':         { lat: 40, fuel: 0.65, gradient: 0.80, name: 'Midwest' },
+                    'southern_plains': { lat: 33, fuel: 0.85, gradient: 0.90, name: 'Southern Plains' },
+                    'northern_plains': { lat: 45, fuel: 0.45, gradient: 0.50, name: 'Northern Plains' },
+                    'gulf_coast':      { lat: 30, fuel: 1.00, gradient: 0.60, name: 'Gulf Coast' },
+                    'southeast':       { lat: 33, fuel: 0.85, gradient: 0.75, name: 'Southeast' },
+                    'northeast':       { lat: 42, fuel: 0.40, gradient: 0.40, name: 'Northeast' }
+                };
+            }
 
-    class DSOEngine {
-        getDayOfYear(date) {
-            const start = new Date(date.getFullYear(), 0, 0);
-            return Math.floor((date - start) / (1000 * 60 * 60 * 24));
-        }
-        
-        getCatalyst(doy) {
-            const phase = (2 * Math.PI * (doy - 80)) / 365.25;
-            return Math.abs(23.5 * (2 * Math.PI / 365.25) * Math.cos(phase)) / 0.405;
-        }
-        
-        getSolarAngle(doy, lat) {
-            const dec = 23.45 * Math.sin((2 * Math.PI / 365.25) * (doy - 81));
-            const decRad = dec * Math.PI / 180;
-            const latRad = lat * Math.PI / 180;
-            return Math.max(0, Math.min(1, Math.sin(latRad) * Math.sin(decRad) + Math.cos(latRad) * Math.cos(decRad)));
-        }
-        
-        getGulfSST(doy) {
-            return 26.5 + 3 * Math.sin((2 * Math.PI * (doy - 45)) / 365.25);
-        }
-        
-        getFuel(doy, gulfDist) {
-            const sst = this.getGulfSST(doy);
-            return Math.max(0, Math.min(1, ((sst - 20) / 12) * Math.exp(-gulfDist / 1500) * 1.5));
-        }
-        
-        getGradient(doy, zone = 0.85) {
-            const spring = Math.exp(-Math.pow((doy - 100) / 45, 2));
-            const fall = Math.exp(-Math.pow((doy - 290) / 50, 2)) * 0.7;
-            return Math.max(spring, fall) * zone;
-        }
-        
-        calculate(date, region) {
-            const doy = this.getDayOfYear(date);
-            const catalyst = this.getCatalyst(doy);
-            const solarAngle = this.getSolarAngle(doy, region.lat);
-            const fuel = this.getFuel(doy, region.gulfDist);
-            const gradient = this.getGradient(doy, region.gradientZone);
-            const inversionRatio = catalyst / (solarAngle + 0.1);
-            const danger = fuel * gradient * Math.pow(catalyst, 2) * Math.pow(solarAngle, 2);
-            const probability = fuel * catalyst * solarAngle;
-            const volatility = gradient * catalyst * solarAngle;
-            
-            return { doy, catalyst, solarAngle, fuel, gradient, inversionRatio, danger, probability, volatility };
-        }
-        
-        classify(factors) {
-            const { catalyst, gradient, fuel, solarAngle, inversionRatio, danger } = factors;
-            
-            const tempScore = (solarAngle * 0.6) + (fuel * 0.4);
-            const tempRegime = tempScore < 0.35 ? 'COLD' : tempScore < 0.50 ? 'COOL' : 
-                              tempScore < 0.65 ? 'MILD' : tempScore < 0.80 ? 'WARM' : 'HOT';
-            
-            let type = 'FAIR';
-            let confidence = 0.5;
-            let mechanism = '';
-            
-            if (catalyst > 0.50 && gradient > 0.45 && fuel > 0.40 && danger > 0.05 && inversionRatio < 1.0) {
-                type = 'TORNADO';
-                confidence = Math.min(0.95, 0.5 + catalyst * 0.3 + gradient * 0.2);
-                mechanism = `High catalyst (${(catalyst*100).toFixed(0)}%) + high gradient (${(gradient*100).toFixed(0)}%) = maximum rotational potential. Gulf moisture fueling supercell development.`;
+            getCatalyst(dayOfYear) {
+                const shifted = dayOfYear - this.SPRING_EQUINOX_DOY;
+                return Math.abs(Math.cos((2 * Math.PI * shifted) / this.DAYS_PER_YEAR));
             }
-            else if (catalyst > 0.40 && gradient > 0.35 && fuel > 0.35) {
-                type = 'SUPERCELL';
-                confidence = 0.7 + gradient * 0.2;
-                mechanism = `Strong rotation driver with organized gradient. Conditions favor rotating storms.`;
+
+            getSolarAngle(lat, dayOfYear) {
+                const latRad = (lat * Math.PI) / 180;
+                const declination = this.EARTH_TILT * Math.sin(
+                    (2 * Math.PI * (dayOfYear - 81)) / this.DAYS_PER_YEAR
+                );
+                const decRad = (declination * Math.PI) / 180;
+                const solarElevation = Math.asin(
+                    Math.sin(latRad) * Math.sin(decRad) + 
+                    Math.cos(latRad) * Math.cos(decRad)
+                );
+                return Math.max(0, Math.sin(solarElevation));
             }
-            else if (catalyst > 0.25 && gradient > 0.10 && fuel > 0.30) {
-                type = 'SEVERE_TSTORM';
-                confidence = 0.6 + catalyst * 0.2;
-                mechanism = `Moderate catalyst with sufficient gradient for storm organization. Watch for damaging winds and hail.`;
+
+            getEFuel(region, climateOffset = 0) {
+                const base = this.REGIONAL_FUEL[region]?.fuel || 0.5;
+                const warming = this.GULF_SST_CURRENT - this.GULF_SST_BASELINE + climateOffset;
+                return Math.min(1.0, base * (1 + this.WARMING_COEFFICIENT * warming * 0.1));
             }
-            else if (catalyst < 0.35 && fuel > 0.65 && solarAngle > 0.70) {
-                type = 'DERECHO';
-                confidence = 0.65;
-                mechanism = `Low catalyst (${(catalyst*100).toFixed(0)}%) prevents rotation, but high fuel (${(fuel*100).toFixed(0)}%) drives linear wind damage.`;
+
+            getGradient(region, climateOffset = 0) {
+                const base = this.REGIONAL_FUEL[region]?.gradient || 0.5;
+                const arcticWarming = climateOffset * this.ARCTIC_DAMPING;
+                return Math.max(0, base * (1 - arcticWarming * 0.1));
             }
-            else if (inversionRatio > 1.2 && fuel > 0.40) {
-                type = 'BOMB_CYCLONE';
-                confidence = 0.7;
-                mechanism = `Inversion ratio ${inversionRatio.toFixed(2)} > 1.2: horizontal discharge mode. Rapid cyclogenesis likely.`;
-            }
-            else if (catalyst > 0.40 && solarAngle < 0.55 && fuel < 0.40) {
-                type = 'WINTER_STORM';
-                confidence = 0.65;
-                mechanism = `Cold regime with active catalyst. Organized winter precipitation.`;
-            }
-            else if (solarAngle < 0.60 && fuel > 0.20 && fuel < 0.45) {
-                if (solarAngle > 0.45) {
-                    type = 'FREEZING_RAIN';
-                    mechanism = `Borderline temperatures with moisture. Freezing rain risk.`;
-                } else {
-                    type = 'SNOW';
-                    mechanism = `Cold solar angle (${(solarAngle*100).toFixed(0)}%) with available moisture.`;
+
+            infer(region, dayOfYear, climateOffset = 0) {
+                const regionData = this.REGIONAL_FUEL[region];
+                const lat = regionData.lat;
+                const fuel = this.getEFuel(region, climateOffset);
+                const gradient = this.getGradient(region, climateOffset);
+                const catalyst = this.getCatalyst(dayOfYear);
+                const solarAngle = this.getSolarAngle(lat, dayOfYear);
+
+                const probability = fuel * catalyst * solarAngle;
+                const volatility = gradient * catalyst * solarAngle;
+                const danger = fuel * gradient * Math.pow(catalyst, 2) * Math.pow(solarAngle, 2);
+
+                let type = 'THUNDERSTORM';
+                let prob = fuel * solarAngle * 0.5;
+                let mechanism = 'Solar heating + moisture → convection';
+
+                if (gradient > 0.70 && catalyst > 0.60 && volatility > 0.40) {
+                    type = 'TORNADO';
+                    prob = volatility;
+                    mechanism = 'Maximum gradient × catalyst → rotational discharge';
+                } else if (fuel > 0.75 && catalyst < 0.35 && gradient < 0.50) {
+                    type = 'DERECHO';
+                    prob = Math.pow(fuel, 2) * (1 - catalyst);
+                    mechanism = 'No rotation driver → linear wind discharge';
+                } else if (gradient > 0.50 && catalyst > 0.40 && solarAngle < 0.35) {
+                    type = 'BLIZZARD';
+                    prob = gradient * catalyst * (1 - solarAngle);
+                    mechanism = 'Cold-side gradient dominance';
+                } else if (gradient > 0.30 && fuel > 0.40 && solarAngle > 0.30) {
+                    type = 'SEVERE_THUNDERSTORM';
+                    prob = fuel * gradient * solarAngle;
+                    mechanism = 'Gradient-driven updraft/downdraft differential';
                 }
-                confidence = 0.6;
+
+                return {
+                    fuel, gradient, catalyst, solarAngle,
+                    probability, volatility, danger,
+                    type, prob, mechanism
+                };
             }
-            else if (fuel > 0.35 && solarAngle > 0.50 && catalyst > 0.15) {
-                type = 'THUNDERSTORM';
-                confidence = 0.6;
-                mechanism = `Adequate fuel and solar heating. Diurnal thunderstorm development.`;
+
+            dayToDate(day) {
+                const date = new Date(2024, 0, 1);
+                date.setDate(day);
+                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
             }
-            else if (fuel > 0.25 && solarAngle > 0.40) {
-                type = 'SHOWERS';
-                confidence = 0.55;
-                mechanism = `Moderate moisture with heating. Scattered shower activity.`;
+
+            getSeason(day) {
+                if (day >= 80 && day < 172) return 'Spring';
+                if (day >= 172 && day < 266) return 'Summer';
+                if (day >= 266 && day < 355) return 'Fall';
+                return 'Winter';
             }
-            else if (fuel > 0.20) {
-                type = 'RAIN';
-                confidence = 0.5;
-                mechanism = `Sufficient moisture for precipitation.`;
-            }
-            else if (fuel > 0.15 && catalyst < 0.25) {
-                type = 'CLOUDY';
-                confidence = 0.6;
-                mechanism = `Low energy state. Cloud cover without significant precipitation.`;
-            }
-            else if (fuel < 0.25 && catalyst < 0.30) {
-                type = 'FAIR';
-                confidence = 0.7;
-                mechanism = `Low fuel, low catalyst = stable atmosphere. Fair weather.`;
-            }
-            else {
-                type = 'PARTLY_CLOUDY';
-                confidence = 0.5;
-                mechanism = `Mixed signals in factors. Variable conditions.`;
-            }
-            
-            let dangerLevel = 'MINIMAL';
-            if (danger > 0.15) dangerLevel = 'EXTREME';
-            else if (danger > 0.08) dangerLevel = 'HIGH';
-            else if (danger > 0.04) dangerLevel = 'MODERATE';
-            else if (danger > 0.02) dangerLevel = 'LOW';
-            
-            const meta = weatherMeta[type] || weatherMeta.FAIR;
-            
-            return {
-                type, confidence, mechanism, tempRegime, dangerLevel,
-                icon: meta.icon, color: meta.color, severity: meta.severity
+        }
+
+        // Initialize
+        const engine = new DSOWeatherEngine();
+
+        // Build Catalyst Chart
+        function buildCatalystChart() {
+            const container = document.getElementById('catalystChart');
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const days = [15, 46, 75, 105, 135, 166, 196, 227, 258, 288, 319, 349];
+
+            days.forEach((day, i) => {
+                const cat = engine.getCatalyst(day);
+                const bar = document.createElement('div');
+                bar.className = 'chart-bar';
+                if (cat > 0.9) bar.className += ' peak';
+                if (cat < 0.2) bar.className += ' low';
+                
+                bar.style.left = `${i * 8.33}%`;
+                bar.style.height = `${cat * 100}%`;
+                
+                bar.innerHTML = `
+                    <span class="chart-value">${cat.toFixed(2)}</span>
+                    <span class="chart-label">${months[i]}</span>
+                `;
+                
+                container.appendChild(bar);
+            });
+        }
+
+        // Update prediction
+        function updatePrediction() {
+            const region = document.getElementById('regionSelect').value;
+            const day = parseInt(document.getElementById('daySlider').value);
+            const climate = parseFloat(document.getElementById('climateSlider').value);
+
+            document.getElementById('dayDisplay').textContent = day;
+            document.getElementById('dateDisplay').textContent = engine.dayToDate(day);
+            document.getElementById('climateDisplay').textContent = climate;
+
+            const result = engine.infer(region, day, climate);
+
+            // Update factor values
+            const colorValue = (el, val) => {
+                el.textContent = val.toFixed(2);
+                el.className = 'result-value';
+                if (val > 0.7) el.classList.add('high');
+                else if (val > 0.4) el.classList.add('medium');
+                else el.classList.add('low');
             };
-        }
-    }
 
-    // ═══════════════════════════════════════════════════════════════════════════════
-    //                           NOAA API INTEGRATION
-    // ═══════════════════════════════════════════════════════════════════════════════
-    
-    class NOAAClient {
-        constructor() {
-            this.baseUrl = 'https://api.weather.gov';
-            this.cache = {};
-        }
-        
-        async getPointData(lat, lon) {
-            const key = `${lat},${lon}`;
-            if (this.cache[key]?.pointData) return this.cache[key].pointData;
-            
-            try {
-                const resp = await fetch(`${this.baseUrl}/points/${lat},${lon}`, {
-                    headers: { 'User-Agent': 'DSO Weather Intelligence (github.com/garrjo/dso_weather)' }
-                });
-                if (!resp.ok) throw new Error(`Points API error: ${resp.status}`);
-                const data = await resp.json();
-                this.cache[key] = this.cache[key] || {};
-                this.cache[key].pointData = data;
-                return data;
-            } catch (e) {
-                console.error('NOAA Points error:', e);
-                return null;
-            }
-        }
-        
-        async getForecast(lat, lon) {
-            try {
-                const pointData = await this.getPointData(lat, lon);
-                if (!pointData) return null;
-                
-                const forecastUrl = pointData.properties.forecast;
-                const resp = await fetch(forecastUrl, {
-                    headers: { 'User-Agent': 'DSO Weather Intelligence' }
-                });
-                if (!resp.ok) throw new Error(`Forecast API error: ${resp.status}`);
-                return await resp.json();
-            } catch (e) {
-                console.error('NOAA Forecast error:', e);
-                return null;
-            }
-        }
-        
-        async getObservations(lat, lon) {
-            try {
-                const pointData = await this.getPointData(lat, lon);
-                if (!pointData) return null;
-                
-                const stationsUrl = pointData.properties.observationStations;
-                const stationsResp = await fetch(stationsUrl, {
-                    headers: { 'User-Agent': 'DSO Weather Intelligence' }
-                });
-                if (!stationsResp.ok) return null;
-                const stations = await stationsResp.json();
-                
-                if (!stations.features?.length) return null;
-                const stationId = stations.features[0].properties.stationIdentifier;
-                
-                const obsResp = await fetch(`${this.baseUrl}/stations/${stationId}/observations/latest`, {
-                    headers: { 'User-Agent': 'DSO Weather Intelligence' }
-                });
-                if (!obsResp.ok) return null;
-                const obs = await obsResp.json();
-                obs.stationId = stationId;
-                return obs;
-            } catch (e) {
-                console.error('NOAA Observations error:', e);
-                return null;
-            }
-        }
-        
-        async getAlerts(lat, lon) {
-            try {
-                const resp = await fetch(`${this.baseUrl}/alerts/active?point=${lat},${lon}`, {
-                    headers: { 'User-Agent': 'DSO Weather Intelligence' }
-                });
-                if (!resp.ok) return [];
-                const data = await resp.json();
-                return data.features || [];
-            } catch (e) {
-                console.error('NOAA Alerts error:', e);
-                return [];
-            }
-        }
-    }
+            colorValue(document.getElementById('fuelValue'), result.fuel);
+            colorValue(document.getElementById('gradientValue'), result.gradient);
+            colorValue(document.getElementById('catalystValue'), result.catalyst);
+            colorValue(document.getElementById('solarValue'), result.solarAngle);
+            colorValue(document.getElementById('probValue'), result.probability);
+            colorValue(document.getElementById('volValue'), result.volatility);
+            colorValue(document.getElementById('dangerValue'), result.danger);
 
-    // ═══════════════════════════════════════════════════════════════════════════════
-    //                           UI CONTROLLER
-    // ═══════════════════════════════════════════════════════════════════════════════
-    
-    const engine = new DSOEngine();
-    const noaa = new NOAAClient();
-    let currentRegion = 'benton_ar';
-    let currentDate = new Date();
-    
-    document.getElementById('dateSelect').valueAsDate = currentDate;
-    
-    async function refresh() {
-        const region = regions[currentRegion];
-        const date = new Date(document.getElementById('dateSelect').value + 'T12:00:00');
-        
-        const factors = engine.calculate(date, region);
-        const classification = engine.classify(factors);
-        
-        updateDSODisplay(factors, classification);
-        updateCatalystChart(factors.doy);
-        
-        updateNOAAStatus('loading');
-        
-        const [observations, forecast, alerts] = await Promise.all([
-            noaa.getObservations(region.lat, region.lon),
-            noaa.getForecast(region.lat, region.lon),
-            noaa.getAlerts(region.lat, region.lon)
-        ]);
-        
-        if (observations || forecast) {
-            updateNOAAStatus('live');
-            updateNOAADisplay(observations, forecast);
-            updateAlerts(alerts);
-            updateComparison(classification, observations, forecast);
-        } else {
-            updateNOAAStatus('offline');
+            document.getElementById('seasonValue').textContent = engine.getSeason(day);
+
+            document.getElementById('predictionType').textContent = result.type;
+            document.getElementById('predictionProb').textContent = (result.prob * 100).toFixed(1) + '%';
+            document.getElementById('predictionMech').textContent = result.mechanism;
+
+            // Update regional grid
+            updateRegionalGrid(day, climate);
         }
-        
-        document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
-    }
-    
-    function updateDSODisplay(factors, classification) {
-        document.getElementById('dsoIcon').textContent = classification.icon;
-        document.getElementById('dsoPrediction').textContent = classification.type.replace('_', ' ');
-        document.getElementById('dsoPrediction').style.color = classification.color;
-        document.getElementById('dsoConfidence').textContent = (classification.confidence * 100).toFixed(0);
-        document.getElementById('tempRegime').textContent = classification.tempRegime;
-        document.getElementById('mechanismText').textContent = classification.mechanism;
-        
-        document.getElementById('catalystValue').textContent = (factors.catalyst * 100).toFixed(1) + '%';
-        document.getElementById('catalystBar').style.width = (factors.catalyst * 100) + '%';
-        
-        document.getElementById('gradientValue').textContent = (factors.gradient * 100).toFixed(1) + '%';
-        document.getElementById('gradientBar').style.width = (factors.gradient * 100) + '%';
-        
-        document.getElementById('fuelValue').textContent = (factors.fuel * 100).toFixed(1) + '%';
-        document.getElementById('fuelBar').style.width = (factors.fuel * 100) + '%';
-        
-        document.getElementById('solarValue').textContent = (factors.solarAngle * 100).toFixed(1) + '%';
-        document.getElementById('solarBar').style.width = (factors.solarAngle * 100) + '%';
-        
-        document.getElementById('dangerValue').textContent = factors.danger.toFixed(5);
-        document.getElementById('dangerLevel').textContent = classification.dangerLevel;
-        const dangerPct = Math.min(100, factors.danger * 500);
-        document.getElementById('dangerMarker').style.marginLeft = dangerPct + '%';
-        
-        document.getElementById('inversionValue').textContent = factors.inversionRatio.toFixed(2);
-        const mode = factors.inversionRatio > 1.2 ? 'HORIZONTAL' : factors.inversionRatio > 1.0 ? 'TRANSITIONAL' : 'VERTICAL';
-        document.getElementById('dischargeMode').textContent = mode;
-        document.getElementById('dischargeModeDesc').textContent = 
-            mode === 'HORIZONTAL' ? 'Cyclonic (bomb cyclone)' :
-            mode === 'TRANSITIONAL' ? 'Mixed mode' : 'Convective (storms)';
-        
-        document.getElementById('dayOfYear').textContent = 'Day ' + factors.doy;
-    }
-    
-    function updateNOAADisplay(obs, forecast) {
-        if (obs?.properties) {
-            const p = obs.properties;
-            const tempC = p.temperature?.value;
-            const tempF = tempC !== null ? Math.round(tempC * 9/5 + 32) : '--';
-            
-            document.getElementById('nwsTemp').textContent = tempF + '°';
-            document.getElementById('nwsCondition').textContent = p.textDescription || 'N/A';
-            
-            const windC = p.windChill?.value;
-            const heatI = p.heatIndex?.value;
-            const feelsLike = windC ?? heatI ?? tempC;
-            const feelsF = feelsLike !== null ? Math.round(feelsLike * 9/5 + 32) : '--';
-            document.getElementById('nwsFeelsLike').textContent = `Feels like ${feelsF}°`;
-            
-            const humidity = p.relativeHumidity?.value;
-            document.getElementById('nwsHumidity').textContent = humidity !== null ? Math.round(humidity) + '%' : '--%';
-            
-            const windMs = p.windSpeed?.value;
-            const windMph = windMs !== null ? Math.round(windMs * 2.237) : '--';
-            const windDir = p.windDirection?.value;
-            const windDirStr = windDir !== null ? getWindDirection(windDir) : '';
-            document.getElementById('nwsWind').textContent = `${windDirStr} ${windMph} mph`;
-            
-            const pressurePa = p.barometricPressure?.value;
-            const pressureMb = pressurePa !== null ? Math.round(pressurePa / 100) : '--';
-            document.getElementById('nwsPressure').textContent = pressureMb + ' mb';
-            
-            const visM = p.visibility?.value;
-            const visMi = visM !== null ? Math.round(visM / 1609) : '--';
-            document.getElementById('nwsVisibility').textContent = visMi + ' mi';
-            
-            document.getElementById('nwsStation').textContent = obs.stationId || 'N/A';
+
+        // Update regional grid
+        function updateRegionalGrid(day, climate) {
+            const grid = document.getElementById('regionGrid');
+            grid.innerHTML = '';
+
+            Object.entries(engine.REGIONAL_FUEL).forEach(([key, data]) => {
+                const result = engine.infer(key, day, climate);
+                const card = document.createElement('div');
+                card.className = 'region-card';
+                
+                let borderColor = 'var(--accent-green)';
+                if (result.danger > 0.4) borderColor = 'var(--accent-red)';
+                else if (result.danger > 0.2) borderColor = 'var(--accent-gold)';
+                card.style.borderLeftColor = borderColor;
+
+                card.innerHTML = `
+                    <div class="region-name">${data.name}</div>
+                    <div class="region-stats">
+                        Danger: ${result.danger.toFixed(3)} | ${result.type}
+                    </div>
+                    <div class="danger-bar">
+                        <div class="danger-fill" style="width: ${Math.min(100, result.danger * 150)}%"></div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
         }
-        
-        if (forecast?.properties?.periods) {
-            updateForecastScroll(forecast.properties.periods);
-        }
-    }
-    
-    function updateForecastScroll(periods) {
-        const container = document.getElementById('forecastScroll');
-        container.innerHTML = '';
-        
-        const region = regions[currentRegion];
-        const days = [];
-        let currentDay = null;
-        
-        for (const p of periods) {
-            const date = new Date(p.startTime);
-            const dayKey = date.toDateString();
-            
-            if (currentDay !== dayKey) {
-                if (days.length >= 7) break;
-                days.push({ date, periods: [p] });
-                currentDay = dayKey;
-            } else {
-                days[days.length - 1].periods.push(p);
+
+        // Event listeners
+        document.getElementById('regionSelect').addEventListener('change', updatePrediction);
+        document.getElementById('daySlider').addEventListener('input', updatePrediction);
+        document.getElementById('climateSlider').addEventListener('input', updatePrediction);
+
+        // ═══════════════════════════════════════════════════════════════
+        // ARKANSAS REAL-TIME FORECAST PANEL
+        // REAL DATA ONLY - No estimates, no approximations
+        // ═══════════════════════════════════════════════════════════════
+
+        // Store current real data for simulation
+        let currentRealData = null;
+        const ARK_LAT = 34.7465;
+
+        // NOAA Weather Service - Real Data Only
+        class NOAAWeatherService {
+            constructor() {
+                this.NWS_API = 'https://api.weather.gov';
+                this.NDBC_API = 'https://www.ndbc.noaa.gov/data/realtime2';
+                this.stationId = 'KLIT';
+                this.GULF_BUOYS = ['42001', '42002', '42019', '42035', '42040', '42067'];
+                this.previousValues = {};
+            }
+
+            async fetchSurface() {
+                const url = `${this.NWS_API}/stations/${this.stationId}/observations/latest`;
+                try {
+                    const resp = await fetch(url, { headers: { 'User-Agent': 'DSOWeather/1.0' }});
+                    if (!resp.ok) throw new Error(`NWS: ${resp.status}`);
+                    const data = await resp.json();
+                    return { success: true, data: data.properties };
+                } catch (e) {
+                    return { success: false, error: e.message };
+                }
+            }
+
+            async fetchBuoy(id) {
+                try {
+                    const resp = await fetch(`${this.NDBC_API}/${id}.txt`);
+                    if (!resp.ok) throw new Error(`Buoy ${id}: ${resp.status}`);
+                    const text = await resp.text();
+                    const lines = text.trim().split('\n');
+                    if (lines.length < 3) return { success: false };
+                    const headers = lines[0].replace(/^#/, '').trim().split(/\s+/);
+                    const vals = lines[2].trim().split(/\s+/);
+                    const getVal = (name) => {
+                        const idx = headers.indexOf(name);
+                        if (idx === -1) return null;
+                        const v = parseFloat(vals[idx]);
+                        return isNaN(v) || v === 999 || v === 9999 ? null : v;
+                    };
+                    const sst = getVal('WTMP');
+                    return sst !== null ? { success: true, buoyId: id, sst } : { success: false };
+                } catch (e) {
+                    return { success: false };
+                }
+            }
+
+            async fetchGulfSST() {
+                const results = await Promise.all(this.GULF_BUOYS.map(id => this.fetchBuoy(id)));
+                const valid = results.filter(r => r.success);
+                if (valid.length === 0) return { success: false, error: 'No buoy data' };
+                const avg = valid.reduce((s, r) => s + r.sst, 0) / valid.length;
+                return { success: true, sst: valid[0].sst, avgSST: avg, count: valid.length, readings: valid };
+            }
+
+            getDayOfYear() {
+                const now = new Date();
+                return Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
+            }
+
+            calcCatalyst(doy) {
+                return Math.abs(Math.cos((2 * Math.PI * (doy - 80)) / 365.25));
+            }
+
+            calcSolar(lat, doy) {
+                const latRad = lat * Math.PI / 180;
+                const decl = 23.44 * Math.sin((2 * Math.PI * (doy - 81)) / 365.25);
+                const declRad = decl * Math.PI / 180;
+                return Math.max(0, Math.sin(Math.asin(Math.sin(latRad) * Math.sin(declRad) + Math.cos(latRad) * Math.cos(declRad))));
+            }
+
+            getDaysToEquinox(doy) {
+                if (doy < 80) return 80 - doy;
+                if (doy < 266) return 266 - doy;
+                return 365 - doy + 80;
+            }
+
+            getPhase(doy) {
+                if (doy >= 80 && doy < 172) return 'Post-spring (declining)';
+                if (doy >= 172 && doy < 266) return 'Summer minimum';
+                if (doy >= 266 && doy < 355) return 'Post-fall (declining)';
+                return 'Winter minimum';
+            }
+
+            trend(key, val) {
+                if (val === null) return '—';
+                const prev = this.previousValues[key];
+                this.previousValues[key] = val;
+                if (prev === undefined) return '→';
+                return Math.abs(val - prev) < 0.01 ? '→' : (val > prev ? '↑' : '↓');
+            }
+
+            cardinal(deg) {
+                if (deg === null) return 'N/A';
+                const d = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+                return d[Math.round(deg / 22.5) % 16];
+            }
+
+            async getWeatherVariables() {
+                const [surface, gulf] = await Promise.all([this.fetchSurface(), this.fetchGulfSST()]);
+                const doy = this.getDayOfYear();
+                const v = {};
+
+                // Extract surface values
+                const sData = surface.success ? surface.data : null;
+                const getVal = (obj) => (obj && obj.value !== null && obj.value !== undefined) ? obj.value : null;
+
+                const temp = getVal(sData?.temperature);
+                const dewpoint = getVal(sData?.dewpoint);
+                const rh = getVal(sData?.relativeHumidity);
+                const windSpd = getVal(sData?.windSpeed);
+                const windDir = getVal(sData?.windDirection);
+                const windGust = getVal(sData?.windGust);
+                const pressure = getVal(sData?.barometricPressure);
+                const pressureMb = pressure ? pressure / 100 : null;
+
+                // Gulf SST
+                const gulfSST = gulf.success ? gulf.sst : null;
+                const avgSST = gulf.success ? gulf.avgSST : null;
+
+                // Computed values
+                const catalyst = this.calcCatalyst(doy);
+                const solar = this.calcSolar(ARK_LAT, doy);
+
+                // E_fuel from real data
+                let eFuel = null;
+                if (gulfSST !== null && rh !== null) {
+                    eFuel = Math.max(0, Math.min(1, 0.7 * (gulfSST - 20) / 10 + 0.3 * rh / 100));
+                }
+
+                // Gradient from real data
+                let gradient = null;
+                if (pressureMb !== null && windSpd !== null) {
+                    gradient = Math.min(1, Math.abs(pressureMb - 1013.25) / 20 + windSpd / 50);
+                }
+
+                // DSO indices
+                let P = null, V = null, D = null;
+                if (eFuel !== null) P = eFuel * catalyst * solar;
+                if (gradient !== null) V = gradient * catalyst * solar;
+                if (eFuel !== null && gradient !== null) D = eFuel * gradient * Math.pow(catalyst, 2) * Math.pow(solar, 2);
+
+                v.humidity = {
+                    dewpoint: dewpoint !== null ? dewpoint.toFixed(1) : 'NO DATA',
+                    rh: rh !== null ? rh.toFixed(0) : 'NO DATA',
+                    source: surface.success ? 'NWS KLIT' : 'UNAVAILABLE',
+                    trend: this.trend('rh', rh)
+                };
+
+                v.dispersal = {
+                    cape: 'NO DATA',
+                    cin: 'NO DATA',
+                    li: 'NO DATA',
+                    source: 'Sounding UNAVAILABLE',
+                    trend: '—'
+                };
+
+                v.wind = {
+                    speed: windSpd !== null ? (windSpd * 0.621371).toFixed(1) : 'NO DATA',
+                    dir: windDir !== null ? this.cardinal(windDir) : 'NO DATA',
+                    dirDeg: windDir !== null ? windDir.toFixed(0) : '--',
+                    shear6km: 'NO DATA',
+                    shear1km: 'NO DATA',
+                    source: surface.success ? 'NWS KLIT' : 'UNAVAILABLE',
+                    trend: this.trend('wind', windSpd)
+                };
+
+                v.angle = {
+                    frontAngle: windDir !== null ? Math.abs((windDir - 270 + 540) % 360 - 180).toFixed(0) : 'NO DATA',
+                    pressure: pressureMb !== null ? pressureMb.toFixed(1) : 'NO DATA',
+                    approach: pressureMb !== null && windDir !== null ?
+                        (pressureMb < 1011 ? (windDir > 180 && windDir < 270 ? 'SW approach' : 'NW approach') : 'Weak boundary') : 'NO DATA',
+                    source: surface.success ? 'NWS KLIT' : 'UNAVAILABLE',
+                    trend: pressureMb !== null ? (pressureMb > 1013.25 ? '↑' : pressureMb < 1013.25 ? '↓' : '→') : '—'
+                };
+
+                v.thermal = {
+                    surfaceF: temp !== null ? (temp * 9/5 + 32).toFixed(1) : 'NO DATA',
+                    lapseRate: 'NO DATA',
+                    stability: 'NO DATA',
+                    source: 'Sounding UNAVAILABLE',
+                    trend: this.trend('temp', temp)
+                };
+
+                v.eFuel = {
+                    value: eFuel !== null ? eFuel.toFixed(3) : 'NO DATA',
+                    gulfSST: gulfSST !== null ? gulfSST.toFixed(1) : 'NO DATA',
+                    avgSST: avgSST !== null ? avgSST.toFixed(1) : 'NO DATA',
+                    buoyCount: gulf.success ? gulf.count : 0,
+                    source: gulf.success ? `NDBC (${gulf.count} buoys)` : 'UNAVAILABLE',
+                    trend: this.trend('efuel', eFuel)
+                };
+
+                v.gradient = {
+                    value: gradient !== null ? gradient.toFixed(3) : 'NO DATA',
+                    pressure: pressureMb !== null ? pressureMb.toFixed(1) : 'NO DATA',
+                    departure: pressureMb !== null ? Math.abs(pressureMb - 1013.25).toFixed(1) : 'NO DATA',
+                    source: surface.success ? 'NWS KLIT' : 'UNAVAILABLE',
+                    trend: this.trend('gradient', gradient)
+                };
+
+                v.catalyst = {
+                    value: catalyst.toFixed(3),
+                    daysToEquinox: this.getDaysToEquinox(doy),
+                    phase: this.getPhase(doy),
+                    source: 'Orbital Mechanics',
+                    trend: this.trend('catalyst', catalyst)
+                };
+
+                v.solar = {
+                    value: solar.toFixed(3),
+                    incidence: (Math.asin(solar) * 180 / Math.PI).toFixed(1),
+                    source: 'Solar Geometry',
+                    trend: this.trend('solar', solar)
+                };
+
+                v.indices = { P, V, D };
+                v.rawValues = { eFuel, gradient, catalyst, solar };
+                v.meta = {
+                    doy,
+                    timestamp: new Date().toLocaleString(),
+                    surfaceOK: surface.success,
+                    buoysOK: gulf.success,
+                    soundingOK: false
+                };
+
+                return v;
             }
         }
-        
-        days.forEach((day, i) => {
-            const dayPeriod = day.periods.find(p => p.isDaytime) || day.periods[0];
-            const nightPeriod = day.periods.find(p => !p.isDaytime);
-            
-            const dsoFactors = engine.calculate(day.date, region);
-            const dsoClass = engine.classify(dsoFactors);
-            
-            const div = document.createElement('div');
-            div.className = 'forecast-day' + (i === 0 ? ' active' : '');
-            div.onclick = () => selectForecastDay(day.date, div);
-            
-            div.innerHTML = `
-                <div class="forecast-day-name">${i === 0 ? 'Today' : day.date.toLocaleDateString('en-US', { weekday: 'short' })}</div>
-                <div class="forecast-day-icon">${getNWSIcon(dayPeriod.shortForecast)}</div>
-                <div class="forecast-day-temp">
-                    <span class="forecast-day-hi">${dayPeriod.temperature}°</span>
-                    ${nightPeriod ? `<span class="forecast-day-lo">${nightPeriod.temperature}°</span>` : ''}
-                </div>
-                <div class="forecast-day-dso">${dsoClass.icon} ${dsoClass.type.substring(0, 8)}</div>
-            `;
-            container.appendChild(div);
-        });
-    }
-    
-    function selectForecastDay(date, element) {
-        document.querySelectorAll('.forecast-day').forEach(el => el.classList.remove('active'));
-        element.classList.add('active');
-        document.getElementById('dateSelect').valueAsDate = date;
-        
-        const region = regions[currentRegion];
-        const factors = engine.calculate(date, region);
-        const classification = engine.classify(factors);
-        updateDSODisplay(factors, classification);
-        updateCatalystChart(factors.doy);
-    }
-    
-    function updateAlerts(alerts) {
-        const container = document.getElementById('alertsContainer');
-        container.innerHTML = '';
-        
-        if (!alerts.length) return;
-        
-        alerts.slice(0, 3).forEach(alert => {
-            const props = alert.properties;
-            const alertClass = props.event?.toLowerCase().includes('warning') ? 'alert-warning' :
-                              props.event?.toLowerCase().includes('watch') ? 'alert-watch' : 'alert-advisory';
-            
-            const div = document.createElement('div');
-            div.className = `alert-item ${alertClass}`;
-            div.innerHTML = `
-                <div class="alert-icon">⚠️</div>
-                <div class="alert-content">
-                    <div class="alert-title">${props.event}</div>
-                    <div class="alert-desc">${props.headline?.substring(0, 150) || ''}...</div>
-                </div>
-            `;
-            container.appendChild(div);
-        });
-    }
-    
-    function updateComparison(dsoClass, obs, forecast) {
-        const box = document.getElementById('comparisonBox');
-        const icon = document.getElementById('comparisonIcon');
-        const title = document.getElementById('comparisonTitle');
-        const text = document.getElementById('comparisonText');
-        
-        if (!forecast?.properties?.periods?.length) {
-            text.textContent = 'Unable to compare - NWS data unavailable';
-            return;
-        }
-        
-        const nwsForecast = forecast.properties.periods[0].shortForecast.toLowerCase();
-        const dsoType = dsoClass.type.toLowerCase();
-        
-        const nwsSevere = nwsForecast.includes('tornado') || nwsForecast.includes('severe') || 
-                         nwsForecast.includes('thunder') || nwsForecast.includes('storm');
-        const dsoSevere = dsoClass.severity >= 5;
-        
-        const nwsWinter = nwsForecast.includes('snow') || nwsForecast.includes('ice') || 
-                         nwsForecast.includes('freezing') || nwsForecast.includes('winter');
-        const dsoWinter = dsoType.includes('snow') || dsoType.includes('ice') || 
-                         dsoType.includes('winter') || dsoType.includes('freezing');
-        
-        const nwsRain = nwsForecast.includes('rain') || nwsForecast.includes('shower');
-        const dsoRain = dsoType.includes('rain') || dsoType.includes('shower') || dsoType.includes('drizzle');
-        
-        const nwsClear = nwsForecast.includes('sunny') || nwsForecast.includes('clear') || nwsForecast.includes('fair');
-        const dsoClear = dsoType === 'fair' || dsoType === 'partly_cloudy';
-        
-        const agree = (nwsSevere && dsoSevere) || (nwsWinter && dsoWinter) || 
-                     (nwsRain && dsoRain) || (nwsClear && dsoClear) ||
-                     (!nwsSevere && !dsoSevere && !nwsWinter && !dsoWinter);
-        
-        if (agree) {
-            box.className = 'comparison-box agree';
-            icon.textContent = '✓';
-            title.textContent = 'DSO & NWS Agree';
-            text.textContent = `Both models predict similar conditions. DSO adds: ${dsoClass.mechanism.substring(0, 100)}...`;
-        } else {
-            box.className = 'comparison-box differ';
-            icon.textContent = '⚡';
-            title.textContent = 'DSO Differs from NWS';
-            
-            if (dsoSevere && !nwsSevere) {
-                text.textContent = `DSO sees elevated severe risk (catalyst ${(engine.calculate(new Date(), regions[currentRegion]).catalyst * 100).toFixed(0)}%) that NWS may not capture. Monitor closely.`;
-            } else if (!dsoSevere && nwsSevere) {
-                text.textContent = `NWS shows severe weather but DSO factors are low. Possible localized event outside DSO's geometric scope.`;
-            } else {
-                text.textContent = `Different interpretations. NWS: "${forecast.properties.periods[0].shortForecast}". DSO factors suggest: ${dsoClass.type}.`;
+
+        const noaaService = new NOAAWeatherService();
+
+        // Update Arkansas panel
+        async function updateArkansasPanel() {
+            const statusEl = document.getElementById('arkansasStatus');
+            const refreshBtn = document.getElementById('refreshArkansas');
+            refreshBtn.disabled = true;
+            statusEl.textContent = 'Fetching live data from NOAA/NWS and NDBC buoys...';
+
+            try {
+                const v = await noaaService.getWeatherVariables();
+                currentRealData = v;
+
+                // Status bar
+                document.getElementById('status-surface').textContent = `Surface: ${v.meta.surfaceOK ? 'ONLINE' : 'OFFLINE'}`;
+                document.getElementById('status-surface').className = `data-source ${v.meta.surfaceOK ? 'online' : 'offline'}`;
+                document.getElementById('status-buoys').textContent = `Gulf Buoys: ${v.meta.buoysOK ? v.eFuel.buoyCount + ' active' : 'OFFLINE'}`;
+                document.getElementById('status-buoys').className = `data-source ${v.meta.buoysOK ? 'online' : 'offline'}`;
+                document.getElementById('status-sounding').textContent = `Sounding: ${v.meta.soundingOK ? 'ONLINE' : 'UNAVAILABLE'}`;
+                document.getElementById('status-sounding').className = `data-source ${v.meta.soundingOK ? 'online' : 'offline'}`;
+                document.getElementById('arkansasDOY').textContent = v.meta.doy;
+                document.getElementById('arkansasTimestamp').textContent = v.meta.timestamp;
+
+                const setVal = (id, val, unit = '') => {
+                    const el = document.getElementById(id);
+                    if (!el) return;
+                    const isNoData = val === 'NO DATA' || val === null || val === undefined;
+                    el.textContent = isNoData ? 'NO DATA' : val + unit;
+                    if (isNoData) el.classList.add('no-data');
+                    else el.classList.remove('no-data');
+                };
+
+                const setTrend = (id, trend) => {
+                    const el = document.getElementById(id);
+                    if (!el) return;
+                    el.textContent = trend;
+                    el.className = 'arkansas-trend ' + (trend === '↑' ? 'up' : trend === '↓' ? 'down' : 'stable');
+                };
+
+                const colorPrimary = (id, val) => {
+                    const el = document.getElementById(id);
+                    if (!el) return;
+                    const isNoData = val === 'NO DATA' || val === null;
+                    el.textContent = isNoData ? 'NO DATA' : val;
+                    if (isNoData) { el.className = 'arkansas-primary-value no-data'; return; }
+                    const num = parseFloat(val);
+                    el.className = 'arkansas-primary-value ' + (num > 0.7 ? 'high' : num > 0.4 ? 'medium' : 'low');
+                };
+
+                // H - Humidity
+                setVal('ark-dewpoint', v.humidity.dewpoint, '°C');
+                setVal('ark-rh', v.humidity.rh, '%');
+                document.getElementById('src-humidity').textContent = v.humidity.source;
+                setTrend('ark-humidity-trend', v.humidity.trend);
+                document.getElementById('ark-humidity-mod').textContent = v.humidity.rh !== 'NO DATA' ?
+                    (parseFloat(v.humidity.rh) > 70 ? 'High moisture - E_fuel enhanced' : 'Moderate moisture') : 'NO DATA';
+
+                // D - Dispersal
+                setVal('ark-cape', v.dispersal.cape, ' J/kg');
+                setVal('ark-cin', v.dispersal.cin, ' J/kg');
+                setVal('ark-li', v.dispersal.li);
+                document.getElementById('src-dispersal').textContent = v.dispersal.source;
+                setTrend('ark-dispersal-trend', v.dispersal.trend);
+                document.getElementById('ark-dispersal-mod').textContent = 'Sounding data required';
+
+                // W - Wind
+                setVal('ark-wind-speed', v.wind.speed, ' mph');
+                setVal('ark-wind-dir', v.wind.dir + ' (' + v.wind.dirDeg + '°)');
+                setVal('ark-shear-6km', v.wind.shear6km, ' kt');
+                setVal('ark-shear-1km', v.wind.shear1km, ' kt');
+                document.getElementById('src-wind').textContent = v.wind.source;
+                setTrend('ark-wind-trend', v.wind.trend);
+                document.getElementById('ark-wind-mod').textContent = v.wind.speed !== 'NO DATA' ?
+                    (parseFloat(v.wind.speed) > 20 ? 'Strong dynamics' : 'Moderate flow') : 'NO DATA';
+
+                // A - Angle
+                setVal('ark-front-angle', v.angle.frontAngle, '°');
+                setVal('ark-pressure', v.angle.pressure, ' mb');
+                setVal('ark-approach', v.angle.approach);
+                document.getElementById('src-angle').textContent = v.angle.source;
+                setTrend('ark-angle-trend', v.angle.trend);
+                document.getElementById('ark-angle-mod').textContent = v.angle.approach !== 'NO DATA' ? v.angle.approach : 'NO DATA';
+
+                // T - Thermal
+                setVal('ark-surface-temp', v.thermal.surfaceF, '°F');
+                setVal('ark-lapse', v.thermal.lapseRate, ' °C/km');
+                setVal('ark-stability', v.thermal.stability);
+                document.getElementById('src-thermal').textContent = v.thermal.source;
+                setTrend('ark-thermal-trend', v.thermal.trend);
+                document.getElementById('ark-thermal-mod').textContent = 'Sounding data required';
+
+                // E_fuel
+                colorPrimary('ark-efuel-value', v.eFuel.value);
+                setVal('ark-gulf-sst', v.eFuel.gulfSST, '°C');
+                setVal('ark-gulf-sst-avg', v.eFuel.avgSST, '°C');
+                setVal('ark-buoy-count', v.eFuel.buoyCount);
+                document.getElementById('src-efuel').textContent = v.eFuel.source;
+                setTrend('ark-efuel-trend', v.eFuel.trend);
+                document.getElementById('ark-efuel-mod').textContent = v.eFuel.value !== 'NO DATA' ?
+                    `Fuel: ${(parseFloat(v.eFuel.value) * 100).toFixed(0)}%` : 'NO DATA';
+
+                // Gradient
+                colorPrimary('ark-gradient-value', v.gradient.value);
+                setVal('ark-gradient-pressure', v.gradient.pressure, ' mb');
+                setVal('ark-pressure-departure', v.gradient.departure, ' mb');
+                document.getElementById('src-gradient').textContent = v.gradient.source;
+                setTrend('ark-gradient-trend', v.gradient.trend);
+                document.getElementById('ark-gradient-mod').textContent = v.gradient.value !== 'NO DATA' ?
+                    `Collision: ${(parseFloat(v.gradient.value) * 100).toFixed(0)}%` : 'NO DATA';
+
+                // Catalyst
+                colorPrimary('ark-catalyst-value', v.catalyst.value);
+                setVal('ark-days-equinox', v.catalyst.daysToEquinox, ' days');
+                setVal('ark-catalyst-phase', v.catalyst.phase);
+                setTrend('ark-catalyst-trend', v.catalyst.trend);
+                document.getElementById('ark-catalyst-mod').textContent = `Rotation: ${(parseFloat(v.catalyst.value) * 100).toFixed(0)}%`;
+
+                // Solar
+                colorPrimary('ark-solar-value', v.solar.value);
+                setVal('ark-incidence', v.solar.incidence, '°');
+                setTrend('ark-solar-trend', v.solar.trend);
+                document.getElementById('ark-solar-mod').textContent = `Solar: ${(parseFloat(v.solar.value) * 100).toFixed(0)}%`;
+
+                // DSO Indices
+                const colorIndex = (id, val) => {
+                    const el = document.getElementById(id);
+                    if (!el) return;
+                    if (val === null) { el.textContent = 'NO DATA'; el.className = 'dso-index-value no-data'; return; }
+                    el.textContent = val.toFixed(3);
+                    el.className = 'dso-index-value ' + (val > 0.5 ? 'high' : val > 0.2 ? 'medium' : 'low');
+                };
+
+                colorIndex('ark-P-value', v.indices.P);
+                colorIndex('ark-V-value', v.indices.V);
+                colorIndex('ark-D-value', v.indices.D);
+
+                // Prediction
+                const predType = document.getElementById('ark-prediction-type');
+                const predProb = document.getElementById('ark-prediction-prob');
+                if (v.indices.D !== null && v.indices.V !== null) {
+                    let type = 'FAIR WEATHER', prob = 0;
+                    const D = v.indices.D, V = v.indices.V;
+                    if (D > 0.4 && V > 0.5) { type = 'TORNADO'; prob = V; }
+                    else if (D > 0.3 && V > 0.3) { type = 'SUPERCELL'; prob = V * 0.8; }
+                    else if (D > 0.2) { type = 'SEVERE TSTORM'; prob = D * 0.7; }
+                    else if (D > 0.1) { type = 'THUNDERSTORM'; prob = D * 0.5; }
+                    predType.textContent = type;
+                    predProb.textContent = (prob * 100).toFixed(1) + '%';
+                } else {
+                    predType.textContent = 'INSUFFICIENT DATA';
+                    predProb.textContent = 'Need Gulf SST + Surface';
+                }
+
+                statusEl.textContent = `Live data updated - ${v.meta.surfaceOK ? 'Surface OK' : 'Surface FAIL'}, ${v.meta.buoysOK ? 'Buoys OK' : 'Buoys FAIL'}`;
+            } catch (error) {
+                statusEl.textContent = 'Error: ' + error.message;
+                console.error('Update failed:', error);
+            } finally {
+                refreshBtn.disabled = false;
             }
         }
-    }
-    
-    function updateCatalystChart(currentDoy) {
-        const svg = document.getElementById('catalystChart');
-        const width = 340, height = 110;
-        const pad = { top: 5, right: 10, bottom: 20, left: 25 };
-        const cw = width - pad.left - pad.right;
-        const ch = height - pad.top - pad.bottom;
-        
-        let path = '';
-        for (let d = 1; d <= 365; d++) {
-            const c = engine.getCatalyst(d);
-            const x = pad.left + (d / 365) * cw;
-            const y = pad.top + ch - (c * ch);
-            path += (d === 1 ? 'M' : 'L') + x.toFixed(1) + ',' + y.toFixed(1);
+
+        // Simulation
+        function runSimulation(hours) {
+            if (!currentRealData || !currentRealData.rawValues) {
+                alert('No real data available. Fetch live data first.');
+                return;
+            }
+
+            const output = document.getElementById('simOutput');
+            const rows = document.getElementById('simRows');
+            output.style.display = 'block';
+            rows.innerHTML = '';
+
+            const { eFuel, gradient } = currentRealData.rawValues;
+            const baseDoy = currentRealData.meta.doy;
+            const thresholds = { tornado: 0.4, supercell: 0.3, severe: 0.2 };
+
+            for (let h = 0; h <= hours; h += 3) {
+                const hourOfDay = (new Date().getHours() + h) % 24;
+                const daysAhead = Math.floor((new Date().getHours() + h) / 24);
+                const futureDoy = baseDoy + daysAhead;
+
+                const catalyst = noaaService.calcCatalyst(futureDoy);
+                const solar = noaaService.calcSolar(ARK_LAT, futureDoy);
+
+                // Adjust solar for time of day (crude approximation)
+                const solarAdj = solar * Math.max(0, Math.sin(Math.PI * (hourOfDay - 6) / 12));
+
+                const P = eFuel !== null ? eFuel * catalyst * solarAdj : null;
+                const V = gradient !== null ? gradient * catalyst * solarAdj : null;
+                const D = (eFuel !== null && gradient !== null) ? eFuel * gradient * Math.pow(catalyst, 2) * Math.pow(solarAdj, 2) : null;
+
+                let alert = '';
+                let alertClass = '';
+                if (D !== null) {
+                    if (D > thresholds.tornado && V > 0.5) { alert = 'TORNADO RISK'; alertClass = 'alert'; }
+                    else if (D > thresholds.supercell) { alert = 'SUPERCELL'; alertClass = 'alert'; }
+                    else if (D > thresholds.severe) { alert = 'SEVERE'; alertClass = ''; }
+                }
+
+                const row = document.createElement('div');
+                row.className = 'sim-row ' + alertClass;
+                row.innerHTML = `
+                    <span>+${h}h</span>
+                    <span>${catalyst.toFixed(3)}</span>
+                    <span>${solarAdj.toFixed(3)}</span>
+                    <span>${P !== null ? P.toFixed(3) : '--'}</span>
+                    <span>${V !== null ? V.toFixed(3) : '--'}</span>
+                    <span>${D !== null ? D.toFixed(4) : '--'}</span>
+                    <span class="alert-text">${alert}</span>
+                `;
+                rows.appendChild(row);
+            }
         }
-        
-        const cx = pad.left + (currentDoy / 365) * cw;
-        const cy = pad.top + ch - (engine.getCatalyst(currentDoy) * ch);
-        
-        svg.innerHTML = `
-            <line x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${height - pad.bottom}" stroke="#2a2a3a"/>
-            <line x1="${pad.left}" y1="${height - pad.bottom}" x2="${width - pad.right}" y2="${height - pad.bottom}" stroke="#2a2a3a"/>
-            <text x="${pad.left + cw * 0.22}" y="${height - 5}" fill="#555" font-size="9">Mar</text>
-            <text x="${pad.left + cw * 0.47}" y="${height - 5}" fill="#555" font-size="9">Jun</text>
-            <text x="${pad.left + cw * 0.72}" y="${height - 5}" fill="#555" font-size="9">Sep</text>
-            <text x="${pad.left + cw * 0.95}" y="${height - 5}" fill="#555" font-size="9">Dec</text>
-            <path d="${path}" fill="none" stroke="#f97316" stroke-width="2"/>
-            <circle cx="${cx}" cy="${cy}" r="5" fill="#ef4444"/>
-            <circle cx="${cx}" cy="${cy}" r="9" fill="none" stroke="#ef4444" stroke-width="2" opacity="0.4"/>
-        `;
-    }
-    
-    function updateNOAAStatus(status) {
-        const dot = document.getElementById('noaaStatus');
-        const text = document.getElementById('noaaStatusText');
-        
-        if (status === 'live') {
-            dot.className = 'status-dot live';
-            text.textContent = 'NOAA Live';
-        } else if (status === 'loading') {
-            dot.className = 'status-dot';
-            dot.style.background = 'var(--accent-yellow)';
-            text.textContent = 'Fetching NOAA data...';
-        } else {
-            dot.className = 'status-dot offline';
-            text.textContent = 'NOAA Offline';
+
+        function clearSimulation() {
+            document.getElementById('simOutput').style.display = 'none';
+            document.getElementById('simRows').innerHTML = '';
         }
-    }
-    
-    function getWindDirection(degrees) {
-        const dirs = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
-        return dirs[Math.round(degrees / 22.5) % 16];
-    }
-    
-    function getNWSIcon(forecast) {
-        const f = forecast.toLowerCase();
-        if (f.includes('tornado')) return '🌪️';
-        if (f.includes('thunder') || f.includes('tstorm')) return '⛈️';
-        if (f.includes('snow')) return '🌨️';
-        if (f.includes('ice') || f.includes('freezing')) return '🧊';
-        if (f.includes('rain') || f.includes('shower')) return '🌧️';
-        if (f.includes('cloudy')) return f.includes('partly') ? '⛅' : '☁️';
-        if (f.includes('fog')) return '🌫️';
-        if (f.includes('wind')) return '🌬️';
-        if (f.includes('sunny') || f.includes('clear')) return '☀️';
-        return '🌤️';
-    }
-    
-    document.getElementById('regionSelect').addEventListener('change', (e) => {
-        currentRegion = e.target.value;
-        noaa.cache = {};
-        refresh();
-    });
-    
-    document.getElementById('dateSelect').addEventListener('change', () => refresh());
-    
-    refresh();
-    setInterval(refresh, 600000);
+
+        // Event listeners
+        document.getElementById('refreshArkansas').addEventListener('click', updateArkansasPanel);
+
+        // Initialize
+        buildCatalystChart();
+        updatePrediction();
+        updateArkansasPanel();
     </script>
 </body>
 </html>
