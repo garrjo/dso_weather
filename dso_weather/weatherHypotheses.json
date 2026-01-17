@@ -1,0 +1,330 @@
+{
+  "metadata": {
+    "title": "DSO Weather Hypothesis Framework",
+    "version": "1.0.0",
+    "created": "2026-01-09",
+    "author": "Joe Garrett",
+    "theory": "Drag-Scale-Object (DSO) E-Field Weather Model",
+    "description": "Weather phenomena as E-field discharge events governed by fuel, gradient, catalyst, and solar angle"
+  },
+  "coreEquations": {
+    "probability": {
+      "formula": "P = E_fuel × |dθ/dt| × sin(α)",
+      "description": "Storm probability based on energy availability",
+      "variables": {
+        "E_fuel": "Energy storage (Gulf SST, atmospheric moisture)",
+        "dθ_dt": "Rate of Earth tilt change (catalyst)",
+        "α": "Solar incidence angle at latitude"
+      }
+    },
+    "volatility": {
+      "formula": "V = (∂E_fuel/∂φ) × |dθ/dt| × sin(α)",
+      "description": "Storm violence based on energy gradient",
+      "variables": {
+        "∂E_fuel/∂φ": "Spatial gradient of energy (air mass collision)",
+        "dθ_dt": "Rate of Earth tilt change (catalyst)",
+        "α": "Solar incidence angle at latitude"
+      }
+    },
+    "danger": {
+      "formula": "D = P × V = E_fuel × (∂E_fuel/∂φ) × (dθ/dt)² × sin²(α)",
+      "description": "Combined danger index"
+    },
+    "climate_adjusted": {
+      "formula": "D(T) = D₀ × (1 + β₁·ΔT_Gulf) / (1 + β₂·ΔT_Arctic)",
+      "description": "Climate-adjusted danger with warming coefficients",
+      "coefficients": {
+        "β₁": 1.0,
+        "β₂": 0.3
+      }
+    }
+  },
+  "stormTypeEquations": {
+    "thunderstorm": {
+      "formula": "P = E_fuel × sin(α)",
+      "drivers": ["fuel", "solar"],
+      "gradient_required": false,
+      "catalyst_required": false
+    },
+    "severe_thunderstorm": {
+      "formula": "P = E_fuel × (∂E/∂φ) × sin(α)",
+      "drivers": ["fuel", "gradient", "solar"],
+      "gradient_required": true,
+      "catalyst_required": false
+    },
+    "supercell": {
+      "formula": "P = E_fuel × (∂E/∂φ) × |dθ/dt| × sin(α)",
+      "drivers": ["fuel", "gradient", "catalyst", "solar"],
+      "gradient_required": true,
+      "catalyst_required": true
+    },
+    "tornado": {
+      "formula": "V = (∂E/∂φ) × |dθ/dt| × sin(α)",
+      "drivers": ["gradient", "catalyst", "solar"],
+      "gradient_required": true,
+      "catalyst_required": true,
+      "notes": "Volatility equation - requires BOTH gradient and catalyst high"
+    },
+    "derecho": {
+      "formula": "P = E_fuel² × τ",
+      "drivers": ["fuel", "duration"],
+      "gradient_required": false,
+      "catalyst_required": false,
+      "notes": "Linear discharge when gradient low but fuel extreme"
+    },
+    "hurricane": {
+      "formula": "P = E_fuel³ × τ² × f(latitude)",
+      "drivers": ["fuel", "duration", "latitude"],
+      "gradient_required": false,
+      "catalyst_required": false,
+      "notes": "Sustained oceanic fuel, requires days to organize"
+    },
+    "blizzard": {
+      "formula": "P = (∂E/∂φ) × |dθ/dt| × (1 - sin(α))",
+      "drivers": ["gradient", "catalyst", "inverse_solar"],
+      "gradient_required": true,
+      "catalyst_required": true,
+      "notes": "Cold-side gradient dominance"
+    },
+    "ice_storm": {
+      "formula": "P = (∂E/∂φ) × T_boundary",
+      "drivers": ["gradient", "temperature_boundary"],
+      "gradient_required": true,
+      "catalyst_required": false
+    },
+    "flash_flood": {
+      "formula": "P = E_fuel × τ × (1/terrain_drainage)",
+      "drivers": ["fuel", "duration", "terrain"],
+      "gradient_required": false,
+      "catalyst_required": false
+    }
+  },
+  "hypotheses": [
+    {
+      "id": "DSO-W-001",
+      "name": "Tornado Clustering Hypothesis",
+      "statement": "Tornado days decrease while tornadoes per outbreak increase due to gradient concentration from differential warming",
+      "predictions": [
+        {
+          "metric": "tornado_days_per_year",
+          "baseline_period": "1970-1980",
+          "baseline_value": 150,
+          "predicted_trend": "decreasing",
+          "predicted_value_2020": 100,
+          "mechanism": "Polar amplification reduces overall gradient availability"
+        },
+        {
+          "metric": "tornadoes_per_outbreak",
+          "baseline_period": "1950-1960",
+          "baseline_value": 10,
+          "predicted_trend": "increasing",
+          "predicted_value_2020": 15,
+          "mechanism": "When gradient events occur, more fuel available for discharge"
+        }
+      ],
+      "validation_status": "confirmed",
+      "data_sources": ["NOAA SPC", "Brooks et al. 2014", "Tippett et al. 2016"]
+    },
+    {
+      "id": "DSO-W-002",
+      "name": "Peak Season Shift Hypothesis",
+      "statement": "Tornado peak shifts earlier as Gulf SST increases, crossing E-threshold sooner",
+      "predictions": [
+        {
+          "metric": "peak_tornado_day",
+          "baseline_period": "1960-1980",
+          "baseline_value": "June 14",
+          "predicted_trend": "earlier",
+          "predicted_value_2020": "May 24",
+          "predicted_shift_days": 21,
+          "mechanism": "Higher E_fuel crosses threshold earlier in spring"
+        }
+      ],
+      "validation_status": "confirmed",
+      "data_sources": ["Long & Stoy 2014", "Trapp et al. 2024"]
+    },
+    {
+      "id": "DSO-W-003",
+      "name": "Summer Tornado Loss Hypothesis",
+      "statement": "June-August tornado days decline despite maximum fuel because catalyst (dθ/dt) approaches zero at solstice",
+      "predictions": [
+        {
+          "metric": "summer_tornado_days",
+          "region": "Southern Great Plains",
+          "trend": "dramatic_decrease",
+          "mechanism": "dθ/dt minimum negates high fuel availability"
+        }
+      ],
+      "validation_status": "confirmed",
+      "data_sources": ["Nature: npj Climate 2024"]
+    },
+    {
+      "id": "DSO-W-004",
+      "name": "Cool Season Gain Hypothesis",
+      "statement": "November-February tornado activity increases in Southeast due to earlier fuel availability from Gulf warming",
+      "predictions": [
+        {
+          "metric": "cool_season_tornadoes",
+          "region": "Dixie Alley",
+          "trend": "increasing",
+          "mechanism": "Gulf warming provides E_fuel earlier; fall/winter catalyst still active"
+        }
+      ],
+      "validation_status": "confirmed",
+      "data_sources": ["NOAA", "Agee & Larson 2016"]
+    },
+    {
+      "id": "DSO-W-005",
+      "name": "Eastward Migration Hypothesis",
+      "statement": "Tornado activity shifts from Great Plains to Southeast as Gulf warming increases E_fuel access for eastern regions",
+      "predictions": [
+        {
+          "metric": "tornado_centroid_longitude",
+          "trend": "eastward",
+          "great_plains_trend": "decreasing",
+          "southeast_trend": "increasing",
+          "rate": "~1 tornado/year shift SE since 1960",
+          "mechanism": "E_fuel source (Gulf) warming shifts optimal zone closer to source"
+        }
+      ],
+      "validation_status": "confirmed",
+      "data_sources": ["Gensini & Brooks 2018", "Nature Scientific Reports 2025"]
+    },
+    {
+      "id": "DSO-W-006",
+      "name": "Latitude Migration Hypothesis",
+      "statement": "Monthly tornado centroid migrates from 30°N (Jan) to 45°N (July) following optimal E-angle intersection",
+      "predictions": [
+        {
+          "month": "January",
+          "peak_latitude": "30-33°N",
+          "region": "Gulf Coast"
+        },
+        {
+          "month": "April",
+          "peak_latitude": "33-37°N",
+          "region": "Arkansas, Oklahoma"
+        },
+        {
+          "month": "May",
+          "peak_latitude": "35-40°N",
+          "region": "Kansas, Nebraska"
+        },
+        {
+          "month": "July",
+          "peak_latitude": "40-45°N",
+          "region": "Dakotas, Minnesota"
+        }
+      ],
+      "validation_status": "confirmed",
+      "data_sources": ["NOAA climatology", "ustornadoes.com"]
+    },
+    {
+      "id": "DSO-W-007",
+      "name": "Gulf SST-Tornado Correlation",
+      "statement": "Arkansas tornado count scales linearly with Gulf SST anomaly at ~50% increase per 0.5°C",
+      "predictions": [
+        {
+          "formula": "T_count ≈ 25 + (50 × ΔT_Gulf)",
+          "at_0C": 25,
+          "at_0.5C": 50,
+          "at_1.0C": 75,
+          "coefficient_β": 1.0
+        }
+      ],
+      "validation_status": "partially_confirmed",
+      "data_sources": ["Arkansas tornado database", "Gulf SST records"]
+    },
+    {
+      "id": "DSO-W-008",
+      "name": "3-7 PM Peak Hypothesis",
+      "statement": "Tornado occurrence peaks 3-7 PM due to E-accumulation time from solar input to ground-sky differential threshold",
+      "predictions": [
+        {
+          "metric": "peak_tornado_hour",
+          "value": "3-7 PM local",
+          "mechanism": "E transfers from solar input to ground heating to atmospheric differential over ~6-8 hours after solar noon"
+        }
+      ],
+      "validation_status": "confirmed",
+      "data_sources": ["NOAA SPC hourly data"]
+    },
+    {
+      "id": "DSO-W-009",
+      "name": "Derecho Summer Dominance",
+      "statement": "Derechos peak in summer when E_fuel maximum but catalyst minimum, causing linear (non-rotating) discharge",
+      "predictions": [
+        {
+          "metric": "derecho_peak_months",
+          "value": "June-July",
+          "region": "Upper Midwest",
+          "mechanism": "E_fuel² × τ maximized; no rotation because dθ/dt ≈ 0"
+        }
+      ],
+      "validation_status": "to_test",
+      "data_sources": ["NOAA derecho database"]
+    },
+    {
+      "id": "DSO-W-010",
+      "name": "Volatility-Probability Phase Offset",
+      "statement": "Volatility peak (March-April) precedes Probability peak (July-August) because gradient maximizes before fuel",
+      "predictions": [
+        {
+          "volatility_peak": "March-April",
+          "probability_peak": "July-August",
+          "result": "Spring: violent but scattered; Summer: frequent but weak"
+        }
+      ],
+      "validation_status": "to_test",
+      "data_sources": ["Historical intensity vs frequency analysis"]
+    }
+  ],
+  "regionalProfiles": {
+    "tornado_alley": {
+      "states": ["TX", "OK", "KS", "NE"],
+      "latitude_range": "33-42°N",
+      "peak_months": ["April", "May", "June"],
+      "primary_driver": "Maximum gradient zone",
+      "trend": "stable_to_declining"
+    },
+    "dixie_alley": {
+      "states": ["AR", "LA", "MS", "AL", "TN"],
+      "latitude_range": "30-36°N",
+      "peak_months": ["March", "April", "November"],
+      "primary_driver": "Near fuel source, two equinox peaks",
+      "trend": "increasing"
+    },
+    "midwest": {
+      "states": ["MO", "IL", "IN", "IA", "OH"],
+      "latitude_range": "38-42°N",
+      "peak_months": ["April", "May", "June"],
+      "primary_driver": "Gradient edge, transition zone",
+      "trend": "increasing"
+    },
+    "northern_plains": {
+      "states": ["ND", "SD", "MN", "MT"],
+      "latitude_range": "42-48°N",
+      "peak_months": ["June", "July"],
+      "primary_driver": "Late season endpoint, weak gradient",
+      "trend": "stable"
+    }
+  },
+  "validationMetrics": {
+    "tornado_count_correlation": {
+      "description": "Correlation between predicted and observed tornado counts by region/month",
+      "target_r_squared": 0.7
+    },
+    "peak_timing_accuracy": {
+      "description": "Accuracy of predicted peak month/day vs observed",
+      "target_within_days": 14
+    },
+    "trend_direction": {
+      "description": "Percentage of regional trends correctly predicted",
+      "target_accuracy": 0.8
+    },
+    "climate_projection": {
+      "description": "Accuracy of warming-adjusted predictions",
+      "method": "hindcast 1990-2020 using 1970 baseline + observed SST"
+    }
+  }
+}
