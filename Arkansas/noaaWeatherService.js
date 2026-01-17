@@ -812,6 +812,8 @@ class DSOWeatherService {
         const catalyst = vars.catalyst?.value?.raw || 0;
         const solar = vars.solarAngle?.value?.raw || 0;
         const cape = vars.energyDispersal?.cape?.raw || 0;
+        const temp = vars.thermalVariance?.surfaceTemp?.raw || null;
+        const wind = vars.windPattern?.speed?.raw || null;
 
         // DSO Power Index
         const P = eFuel * Math.abs(catalyst) * solar;
@@ -848,6 +850,8 @@ class DSOWeatherService {
             confidence,
             dsoIndex: P,
             cape: cape,
+            temp: temp,
+            wind: wind,
             timestamp: new Date().toISOString(),
             location: this.location.name,
             dataQuality: {
