@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DSO Weather - Arkansas Dashboard</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <style>
+        :root {
+            --bg-dark: #1a1a2e;
+            --bg-card: #242442;
+            --bg-card-hover: #2d2d52;
+            --accent-blue: #4a9eff;
+            --accent-gold: #f0c040;
+            --accent-orange: #ff8c42;
+            --accent-red: #ff4757;
+            --accent-green: #2ed573;
+            --accent-purple: #a55eea;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0b8;
+            --text-dim: #6c6c8a;
+            --border: #3a3a5c;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+
+        .dashboard {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .location {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1.1rem;
+        }
+
+        .location-pin { color: var(--accent-red); }
+
+        .last-updated {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        .refresh-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .refresh-btn:hover { background: var(--bg-card-hover); }
+
+        /* Hero Section */
+        .hero {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .current-weather {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .weather-main {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .weather-icon {
+            font-size: 4rem;
+        }
+
+        .temp-display {
+            font-size: 4.5rem;
+            font-weight: 300;
+            line-height: 1;
+        }
+
+        .temp-display .unit { font-size: 2rem; color: var(--text-secondary); }
+
+        .condition {
+            font-size: 1.5rem;
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+        }
+
+        .feels-like {
+            color: var(--text-secondary);
+            font-size: 1rem;
+        }
+
+        .weather-summary {
+            color: var(--text-secondary);
+            margin: 1rem 0;
+            font-size: 0.95rem;
+        }
+
+        .quick-stats {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 1rem;
+            margin-top: auto;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .quick-stat {
+            text-align: center;
+        }
+
+        .quick-stat-label {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            margin-bottom: 0.25rem;
+        }
+
+        .quick-stat-value {
+            font-size: 1rem;
+            font-weight: 500;
+        }
+
+        /* DSO Risk Panel */
+        .dso-risk {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .risk-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .risk-title {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .risk-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .risk-minimal { background: var(--accent-blue); }
+        .risk-low { background: var(--accent-green); }
+        .risk-moderate { background: var(--accent-orange); }
+        .risk-high { background: var(--accent-red); }
+
+        .risk-level {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .risk-summary {
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        .dso-indices {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-top: auto;
+        }
+
+        .dso-index {
+            text-align: center;
+            padding: 0.75rem;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+        }
+
+        .dso-index-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--accent-gold);
+        }
+
+        .dso-index-label {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+        }
+
+        /* Forecast Strip */
+        .forecast-strip {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+            overflow-x: auto;
+            padding-bottom: 0.5rem;
+        }
+
+        .forecast-day {
+            flex: 0 0 auto;
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            text-align: center;
+            min-width: 100px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+
+        .forecast-day:hover { background: var(--bg-card-hover); }
+        .forecast-day.active { border-color: var(--accent-blue); }
+
+        .forecast-day-name {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.25rem;
+        }
+
+        .forecast-day-date {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            margin-bottom: 0.5rem;
+        }
+
+        .forecast-icon {
+            font-size: 2rem;
+            margin: 0.5rem 0;
+        }
+
+        .forecast-temps {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .forecast-high { font-weight: 600; }
+        .forecast-low { color: var(--text-secondary); }
+
+        /* Detail Cards Grid */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+        }
+
+        .detail-card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .detail-card.wide { grid-column: span 2; }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .card-title {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .card-icon {
+            font-size: 1.25rem;
+            opacity: 0.7;
+        }
+
+        .card-value {
+            font-size: 2.25rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .card-value .unit {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            font-weight: 400;
+        }
+
+        .card-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .status-good { background: var(--accent-green); }
+        .status-moderate { background: var(--accent-orange); }
+        .status-poor { background: var(--accent-red); }
+
+        .card-description {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            margin-top: auto;
+        }
+
+        /* Gauge */
+        .gauge-container {
+            position: relative;
+            width: 100%;
+            height: 8px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+            margin: 1rem 0;
+            overflow: hidden;
+        }
+
+        .gauge-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .gauge-gradient {
+            background: linear-gradient(90deg, var(--accent-green), var(--accent-gold), var(--accent-orange), var(--accent-red));
+        }
+
+        /* Wind Compass */
+        .wind-compass {
+            width: 80px;
+            height: 80px;
+            border: 2px solid var(--border);
+            border-radius: 50%;
+            position: relative;
+            margin: 0 auto 1rem;
+        }
+
+        .compass-arrow {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 4px;
+            height: 35px;
+            background: var(--accent-blue);
+            transform-origin: bottom center;
+            border-radius: 2px;
+        }
+
+        .compass-label {
+            position: absolute;
+            font-size: 0.65rem;
+            color: var(--text-dim);
+        }
+        .compass-n { top: 4px; left: 50%; transform: translateX(-50%); }
+        .compass-s { bottom: 4px; left: 50%; transform: translateX(-50%); }
+        .compass-e { right: 4px; top: 50%; transform: translateY(-50%); }
+        .compass-w { left: 4px; top: 50%; transform: translateY(-50%); }
+
+        /* Sun Card */
+        .sun-arc {
+            width: 100%;
+            height: 60px;
+            position: relative;
+            margin: 1rem 0;
+        }
+
+        .sun-times {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 0.5rem;
+        }
+
+        .sun-time {
+            text-align: center;
+        }
+
+        .sun-time-value {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .sun-time-label {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+        }
+
+        /* Data Sources Footer */
+        .data-sources {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background: var(--bg-card);
+            border-radius: 12px;
+        }
+
+        .data-source {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .source-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .source-online { background: var(--accent-green); }
+        .source-offline { background: var(--accent-red); }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .cards-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+
+        @media (max-width: 900px) {
+            .hero { grid-template-columns: 1fr; }
+            .cards-grid { grid-template-columns: repeat(2, 1fr); }
+            .quick-stats { grid-template-columns: repeat(3, 1fr); }
+        }
+
+        @media (max-width: 600px) {
+            .cards-grid { grid-template-columns: 1fr; }
+            .detail-card.wide { grid-column: span 1; }
+            .quick-stats { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        /* Loading State */
+        .loading {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .skeleton {
+            background: linear-gradient(90deg, var(--bg-card) 25%, var(--bg-card-hover) 50%, var(--bg-card) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 4px;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Header -->
+        <header class="header">
+            <div>
+                <div class="location">
+                    <span class="location-pin">📍</span>
+                    <span id="locationName">Arkansas</span>
+                </div>
+                <div class="last-updated">Last updated: <span id="lastUpdated">--</span></div>
+            </div>
+            <button class="refresh-btn" id="refreshBtn" onclick="refreshData()">↻ Refresh</button>
+        </header>
+
+        <!-- Hero Section -->
+        <section class="hero">
+            <!-- Current Weather -->
+            <div class="current-weather">
+                <div class="weather-main">
+                    <div class="weather-icon" id="weatherIcon">🌤️</div>
+                    <div>
+                        <div class="temp-display"><span id="currentTemp">--</span><span class="unit">°F</span></div>
+                        <div class="condition" id="condition">Loading...</div>
+                        <div class="feels-like">Feels like <span id="feelsLike">--</span>°</div>
+                    </div>
+                </div>
+                <div class="weather-summary" id="weatherSummary">Fetching current conditions...</div>
+                <div class="quick-stats">
+                    <div class="quick-stat">
+                        <div class="quick-stat-label">Wind</div>
+                        <div class="quick-stat-value"><span id="windSpeed">--</span> mph</div>
+                    </div>
+                    <div class="quick-stat">
+                        <div class="quick-stat-label">Humidity</div>
+                        <div class="quick-stat-value"><span id="humidity">--</span>%</div>
+                    </div>
+                    <div class="quick-stat">
+                        <div class="quick-stat-label">Pressure</div>
+                        <div class="quick-stat-value"><span id="pressure">--</span> mb</div>
+                    </div>
+                    <div class="quick-stat">
+                        <div class="quick-stat-label">Dew Point</div>
+                        <div class="quick-stat-value"><span id="dewpoint">--</span>°</div>
+                    </div>
+                    <div class="quick-stat">
+                        <div class="quick-stat-label">Visibility</div>
+                        <div class="quick-stat-value"><span id="visibility">--</span> mi</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DSO Risk Panel -->
+            <div class="dso-risk">
+                <div class="risk-header">
+                    <span class="risk-title">DSO Severe Weather Risk</span>
+                    <span class="risk-badge risk-minimal" id="riskBadge">MINIMAL</span>
+                </div>
+                <div class="risk-level" id="riskLevel" style="color: var(--accent-blue);">MINIMAL</div>
+                <div class="risk-summary" id="riskSummary">Low severe weather threat</div>
+                <div class="gauge-container">
+                    <div class="gauge-fill gauge-gradient" id="riskGauge" style="width: 10%;"></div>
+                </div>
+                <div class="dso-indices">
+                    <div class="dso-index">
+                        <div class="dso-index-value" id="dsoP">--</div>
+                        <div class="dso-index-label">P (Power)</div>
+                    </div>
+                    <div class="dso-index">
+                        <div class="dso-index-value" id="dsoV">--</div>
+                        <div class="dso-index-label">V (Volatility)</div>
+                    </div>
+                    <div class="dso-index">
+                        <div class="dso-index-value" id="dsoD">--</div>
+                        <div class="dso-index-label">D (Danger)</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 7-Day Forecast Strip -->
+        <section class="forecast-strip" id="forecastStrip">
+            <!-- Populated by JS -->
+        </section>
+
+        <!-- Detail Cards Grid -->
+        <section class="cards-grid">
+            <!-- Wind -->
+            <div class="detail-card">
+                <div class="card-header">
+                    <span class="card-title">Wind</span>
+                    <span class="card-icon">💨</span>
+                </div>
+                <div class="wind-compass">
+                    <span class="compass-label compass-n">N</span>
+                    <span class="compass-label compass-s">S</span>
+                    <span class="compass-label compass-e">E</span>
+                    <span class="compass-label compass-w">W</span>
+                    <div class="compass-arrow" id="windArrow" style="transform: translate(-50%, -100%) rotate(0deg);"></div>
+                </div>
+                <div style="text-align: center;">
+                    <div class="card-value"><span id="windSpeedCard">--</span> <span class="unit">mph</span></div>
+                    <div class="card-status">
+                        <span>From <span id="windDir">--</span></span>
+                    </div>
+                </div>
+                <div class="card-description" id="windDesc">--</div>
+            </div>
+
+            <!-- Humidity -->
+            <div class="detail-card">
+                <div class="card-header">
+                    <span class="card-title">Humidity</span>
+                    <span class="card-icon">💧</span>
+                </div>
+                <div class="card-value"><span id="humidityCard">--</span><span class="unit">%</span></div>
+                <div class="gauge-container">
+                    <div class="gauge-fill" id="humidityGauge" style="width: 0%; background: var(--accent-blue);"></div>
+                </div>
+                <div class="card-status">
+                    <span class="status-dot status-good" id="humidityDot"></span>
+                    <span id="humidityStatus">--</span>
+                </div>
+                <div class="card-description">Dew point: <span id="dewpointCard">--</span>°F</div>
+            </div>
+
+            <!-- Pressure -->
+            <div class="detail-card">
+                <div class="card-header">
+                    <span class="card-title">Pressure</span>
+                    <span class="card-icon">📊</span>
+                </div>
+                <div class="card-value"><span id="pressureCard">--</span> <span class="unit">mb</span></div>
+                <div class="gauge-container">
+                    <div class="gauge-fill" id="pressureGauge" style="width: 50%; background: var(--accent-green);"></div>
+                </div>
+                <div class="card-status">
+                    <span class="status-dot" id="pressureDot"></span>
+                    <span id="pressureTrend">--</span>
+                </div>
+                <div class="card-description" id="pressureDesc">--</div>
+            </div>
+
+            <!-- Gulf SST -->
+            <div class="detail-card">
+                <div class="card-header">
+                    <span class="card-title">Gulf SST</span>
+                    <span class="card-icon">🌊</span>
+                </div>
+                <div class="card-value"><span id="gulfSST">--</span><span class="unit">°C</span></div>
+                <div class="gauge-container">
+                    <div class="gauge-fill gauge-gradient" id="sstGauge" style="width: 0%;"></div>
+                </div>
+                <div class="card-status">
+                    <span class="status-dot" id="sstDot"></span>
+                    <span id="sstStatus">--</span>
+                </div>
+                <div class="card-description">E-Fuel: <span id="eFuelValue">--</span></div>
+            </div>
+
+            <!-- Catalyst -->
+            <div class="detail-card">
+                <div class="card-header">
+                    <span class="card-title">Catalyst (dθ/dt)</span>
+                    <span class="card-icon">🌀</span>
+                </div>
+                <div class="card-value"><span id="catalyst">--</span></div>
+                <div class="gauge-container">
+                    <div class="gauge-fill" id="catalystGauge" style="width: 0%; background: var(--accent-gold);"></div>
+                </div>
+                <div class="card-status">
+                    <span id="catalystPhase">--</span>
+                </div>
+                <div class="card-description"><span id="daysToEquinox">--</span> days to equinox</div>
+            </div>
+
+            <!-- Solar Angle -->
+            <div class="detail-card">
+                <div class="card-header">
+                    <span class="card-title">Solar Angle</span>
+                    <span class="card-icon">☀️</span>
+                </div>
+                <div class="card-value"><span id="solarAngle">--</span><span class="unit">°</span></div>
+                <div class="gauge-container">
+                    <div class="gauge-fill" id="solarGauge" style="width: 0%; background: var(--accent-orange);"></div>
+                </div>
+                <div class="card-status">
+                    <span id="solarStatus">--</span>
+                </div>
+                <div class="card-description">Energy input factor</div>
+            </div>
+
+            <!-- CAPE -->
+            <div class="detail-card">
+                <div class="card-header">
+                    <span class="card-title">CAPE</span>
+                    <span class="card-icon">⚡</span>
+                </div>
+                <div class="card-value"><span id="cape">--</span> <span class="unit">J/kg</span></div>
+                <div class="gauge-container">
+                    <div class="gauge-fill gauge-gradient" id="capeGauge" style="width: 0%;"></div>
+                </div>
+                <div class="card-status">
+                    <span class="status-dot" id="capeDot"></span>
+                    <span id="capeStatus">--</span>
+                </div>
+                <div class="card-description" id="capeDesc">Convective Available Potential Energy</div>
+            </div>
+
+            <!-- Gradient -->
+            <div class="detail-card">
+                <div class="card-header">
+                    <span class="card-title">Gradient (∂E/∂φ)</span>
+                    <span class="card-icon">📈</span>
+                </div>
+                <div class="card-value"><span id="gradient">--</span></div>
+                <div class="gauge-container">
+                    <div class="gauge-fill" id="gradientGauge" style="width: 0%; background: var(--accent-purple);"></div>
+                </div>
+                <div class="card-status">
+                    <span id="gradientStatus">--</span>
+                </div>
+                <div class="card-description">Air mass collision intensity</div>
+            </div>
+        </section>
+
+        <!-- Data Sources Footer -->
+        <footer class="data-sources">
+            <div class="data-source">
+                <span class="source-status" id="sourceSurface"></span>
+                <span>Surface (NWS)</span>
+            </div>
+            <div class="data-source">
+                <span class="source-status" id="sourceSST"></span>
+                <span>Gulf SST (Open-Meteo)</span>
+            </div>
+            <div class="data-source">
+                <span class="source-status" id="sourceAtmo"></span>
+                <span>Atmospheric (Open-Meteo)</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Load Weather Service -->
+    <script src="noaaWeatherService.js"></script>
+
+    <script>
+        // Initialize weather service
+        const weatherService = new DSOWeatherService({
+            location: {
+                name: 'Arkansas',
+                lat: 34.7465,
+                lon: -92.2896,
+                stationId: 'KLIT',
+                nwsOffice: 'LZK'
+            }
+        });
+
+        // Weather icons mapping
+        const weatherIcons = {
+            clear: '☀️',
+            sunny: '☀️',
+            'mostly clear': '🌤️',
+            'partly cloudy': '⛅',
+            cloudy: '☁️',
+            overcast: '☁️',
+            rain: '🌧️',
+            showers: '🌦️',
+            thunderstorm: '⛈️',
+            snow: '❄️',
+            fog: '🌫️',
+            default: '🌤️'
+        };
+
+        function getWeatherIcon(condition) {
+            if (!condition) return weatherIcons.default;
+            const lower = condition.toLowerCase();
+            for (const [key, icon] of Object.entries(weatherIcons)) {
+                if (lower.includes(key)) return icon;
+            }
+            return weatherIcons.default;
+        }
+
+        // Refresh data
+        async function refreshData() {
+            const btn = document.getElementById('refreshBtn');
+            btn.textContent = '↻ Loading...';
+            btn.disabled = true;
+
+            try {
+                const vars = await weatherService.getWeatherVariables();
+                updateDashboard(vars);
+            } catch (error) {
+                console.error('Failed to fetch weather data:', error);
+            } finally {
+                btn.textContent = '↻ Refresh';
+                btn.disabled = false;
+            }
+        }
+
+        // Helper to extract raw values
+        function getRaw(obj) {
+            if (!obj) return null;
+            if (obj.raw !== undefined) return obj.raw;
+            if (obj.value === 'NO DATA') return null;
+            const num = parseFloat(obj.value);
+            return isNaN(num) ? null : num;
+        }
+
+        function formatValue(val, decimals = 0, fallback = '--') {
+            if (val === null || val === undefined || isNaN(val)) return fallback;
+            return decimals > 0 ? val.toFixed(decimals) : Math.round(val).toString();
+        }
+
+        // Update dashboard with data
+        function updateDashboard(vars) {
+            // Timestamp
+            document.getElementById('lastUpdated').textContent = new Date().toLocaleString();
+
+            // Extract values
+            const tempC = getRaw(vars.thermalVariance?.surfaceTemp);
+            const tempF = tempC !== null ? tempC * 9/5 + 32 : null;
+            const dewpointC = getRaw(vars.humidity?.dewpoint);
+            const dewpointF = dewpointC !== null ? dewpointC * 9/5 + 32 : null;
+            const rh = getRaw(vars.humidity?.relativeHumidity);
+            const windSpd = getRaw(vars.windPattern?.speed);
+            const windDir = getRaw(vars.windPattern?.direction);
+            const pressure = getRaw(vars.angleOfAttack?.pressure);
+            const gulfSST = getRaw(vars.eFuel?.gulfSST);
+            const eFuel = getRaw(vars.eFuel?.value);
+            const gradient = getRaw(vars.gradient?.value);
+            const catalyst = getRaw(vars.catalyst?.value);
+            const solarAngle = getRaw(vars.solarAngle?.value);
+            const solarDeg = getRaw(vars.solarAngle?.incidenceDegrees);
+            const cape = getRaw(vars.energyDispersal?.cape);
+
+            // Current Weather
+            document.getElementById('currentTemp').textContent = formatValue(tempF);
+            document.getElementById('condition').textContent = tempF !== null ? (tempF > 70 ? 'Warm' : tempF > 50 ? 'Cool' : 'Cold') : 'Unknown';
+            document.getElementById('feelsLike').textContent = formatValue(tempF); // Simplified
+            document.getElementById('weatherIcon').textContent = tempF !== null ? (tempF > 70 ? '☀️' : tempF > 40 ? '🌤️' : '❄️') : '🌤️';
+            document.getElementById('weatherSummary').textContent = `Current temperature is ${formatValue(tempF)}°F with ${formatValue(rh)}% humidity.`;
+
+            // Quick Stats
+            document.getElementById('windSpeed').textContent = formatValue(windSpd, 1);
+            document.getElementById('humidity').textContent = formatValue(rh);
+            document.getElementById('pressure').textContent = formatValue(pressure, 1);
+            document.getElementById('dewpoint').textContent = formatValue(dewpointF);
+            document.getElementById('visibility').textContent = '--'; // Not available
+
+            // DSO Risk
+            const P = eFuel !== null && catalyst !== null && solarAngle !== null ? eFuel * catalyst * solarAngle : null;
+            const V = gradient !== null && catalyst !== null && solarAngle !== null ? gradient * catalyst * solarAngle : null;
+            const D = P !== null && V !== null ? P * gradient : null;
+
+            let riskLevel = 'MINIMAL', riskColor = 'var(--accent-blue)', riskClass = 'risk-minimal', riskPct = 10;
+            if (D !== null) {
+                if (D > 0.3) { riskLevel = 'HIGH'; riskColor = 'var(--accent-red)'; riskClass = 'risk-high'; riskPct = 90; }
+                else if (D > 0.2) { riskLevel = 'MODERATE'; riskColor = 'var(--accent-orange)'; riskClass = 'risk-moderate'; riskPct = 60; }
+                else if (D > 0.1) { riskLevel = 'LOW'; riskColor = 'var(--accent-green)'; riskClass = 'risk-low'; riskPct = 35; }
+            }
+
+            document.getElementById('riskLevel').textContent = riskLevel;
+            document.getElementById('riskLevel').style.color = riskColor;
+            document.getElementById('riskBadge').textContent = riskLevel;
+            document.getElementById('riskBadge').className = 'risk-badge ' + riskClass;
+            document.getElementById('riskGauge').style.width = riskPct + '%';
+            document.getElementById('riskSummary').textContent = riskLevel === 'MINIMAL' ? 'Low severe weather threat' :
+                riskLevel === 'LOW' ? 'Slight chance of storms' :
+                riskLevel === 'MODERATE' ? 'Isolated storms possible' : 'Significant severe weather potential';
+
+            document.getElementById('dsoP').textContent = formatValue(P, 3);
+            document.getElementById('dsoV').textContent = formatValue(V, 3);
+            document.getElementById('dsoD').textContent = formatValue(D, 4);
+
+            // Wind Card
+            document.getElementById('windSpeedCard').textContent = formatValue(windSpd, 1);
+            document.getElementById('windDir').textContent = windDir !== null ? vars.windPattern?.directionCardinal || '--' : '--';
+            if (windDir !== null) {
+                document.getElementById('windArrow').style.transform = `translate(-50%, -100%) rotate(${windDir}deg)`;
+            }
+            document.getElementById('windDesc').textContent = windSpd !== null ? (windSpd > 20 ? 'Strong winds' : windSpd > 10 ? 'Moderate breeze' : 'Light winds') : '--';
+
+            // Humidity Card
+            document.getElementById('humidityCard').textContent = formatValue(rh);
+            document.getElementById('humidityGauge').style.width = (rh || 0) + '%';
+            document.getElementById('humidityStatus').textContent = rh !== null ? (rh > 70 ? 'High' : rh > 40 ? 'Comfortable' : 'Dry') : '--';
+            document.getElementById('dewpointCard').textContent = formatValue(dewpointF);
+
+            // Pressure Card
+            document.getElementById('pressureCard').textContent = formatValue(pressure, 1);
+            const pressureNorm = pressure !== null ? Math.min(100, Math.max(0, (pressure - 980) / 60 * 100)) : 50;
+            document.getElementById('pressureGauge').style.width = pressureNorm + '%';
+            document.getElementById('pressureTrend').textContent = pressure !== null ? (pressure > 1013 ? 'Rising' : 'Falling') : '--';
+            document.getElementById('pressureDesc').textContent = pressure !== null ? (pressure > 1020 ? 'High pressure - stable' : pressure < 1005 ? 'Low pressure - unsettled' : 'Normal') : '--';
+
+            // Gulf SST Card
+            document.getElementById('gulfSST').textContent = formatValue(gulfSST, 1);
+            const sstNorm = gulfSST !== null ? Math.min(100, Math.max(0, (gulfSST - 15) / 20 * 100)) : 0;
+            document.getElementById('sstGauge').style.width = sstNorm + '%';
+            document.getElementById('sstStatus').textContent = gulfSST !== null ? (gulfSST > 26 ? 'Warm - high fuel' : gulfSST > 22 ? 'Moderate' : 'Cool') : '--';
+            document.getElementById('eFuelValue').textContent = formatValue(eFuel, 3);
+
+            // Catalyst Card
+            document.getElementById('catalyst').textContent = formatValue(catalyst, 3);
+            document.getElementById('catalystGauge').style.width = ((catalyst || 0) * 100) + '%';
+            document.getElementById('catalystPhase').textContent = vars.catalyst?.phase || '--';
+            document.getElementById('daysToEquinox').textContent = vars.catalyst?.daysToEquinox || '--';
+
+            // Solar Card
+            document.getElementById('solarAngle').textContent = formatValue(solarDeg, 1);
+            document.getElementById('solarGauge').style.width = ((solarAngle || 0) * 100) + '%';
+            document.getElementById('solarStatus').textContent = solarAngle !== null ? (solarAngle > 0.7 ? 'High energy' : solarAngle > 0.4 ? 'Moderate' : 'Low energy') : '--';
+
+            // CAPE Card
+            document.getElementById('cape').textContent = formatValue(cape, 0);
+            const capeNorm = cape !== null ? Math.min(100, cape / 3000 * 100) : 0;
+            document.getElementById('capeGauge').style.width = capeNorm + '%';
+            document.getElementById('capeStatus').textContent = cape !== null ? (cape > 2000 ? 'Extreme' : cape > 1000 ? 'Strong' : cape > 500 ? 'Moderate' : 'Weak') : '--';
+            const capeDot = document.getElementById('capeDot');
+            capeDot.className = 'status-dot ' + (cape > 1500 ? 'status-poor' : cape > 500 ? 'status-moderate' : 'status-good');
+
+            // Gradient Card
+            document.getElementById('gradient').textContent = formatValue(gradient, 3);
+            document.getElementById('gradientGauge').style.width = ((gradient || 0) * 100) + '%';
+            document.getElementById('gradientStatus').textContent = gradient !== null ? (gradient > 0.7 ? 'Strong collision' : gradient > 0.4 ? 'Moderate' : 'Weak') : '--';
+
+            // Data Sources
+            const meta = vars.metadata?.dataSources || {};
+            document.getElementById('sourceSurface').className = 'source-status ' + (meta.surface ? 'source-online' : 'source-offline');
+            document.getElementById('sourceSST').className = 'source-status ' + (meta.gulfBuoys ? 'source-online' : 'source-offline');
+            document.getElementById('sourceAtmo').className = 'source-status ' + (meta.atmospheric ? 'source-online' : 'source-offline');
+
+            // Build forecast strip (placeholder - would need NWS forecast API)
+            buildForecastStrip();
+        }
+
+        // Build forecast strip
+        function buildForecastStrip() {
+            const strip = document.getElementById('forecastStrip');
+            strip.innerHTML = '';
+
+            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const today = new Date();
+
+            for (let i = 0; i < 7; i++) {
+                const date = new Date(today);
+                date.setDate(date.getDate() + i);
+                const dayName = i === 0 ? 'Today' : days[date.getDay()];
+                const dateStr = date.getDate();
+
+                const card = document.createElement('div');
+                card.className = 'forecast-day' + (i === 0 ? ' active' : '');
+                card.innerHTML = `
+                    <div class="forecast-day-name">${dayName}</div>
+                    <div class="forecast-day-date">${dateStr}</div>
+                    <div class="forecast-icon">🌤️</div>
+                    <div class="forecast-temps">
+                        <span class="forecast-high">--°</span>
+                        <span class="forecast-low">--°</span>
+                    </div>
+                `;
+                strip.appendChild(card);
+            }
+        }
+
+        // Initialize
+        refreshData();
+    </script>
+</body>
+</html>
