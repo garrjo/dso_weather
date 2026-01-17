@@ -143,18 +143,13 @@ class DSOWeatherService {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // GULF SST FROM NOAA ERDDAP (CORS-ENABLED)
+    // GULF SST FROM OPEN-METEO MARINE API (CORS-ENABLED)
     // ═══════════════════════════════════════════════════════════════
 
     async fetchGulfSST() {
-        // Get yesterday's date for reliable SST data
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const dateStr = yesterday.toISOString().split('T')[0];
-
-        // Sample multiple points in the Gulf
+        // Sample multiple points in the Gulf using Open-Meteo Marine API
         const results = await Promise.all(
-            this.GULF_POINTS.map(point => this.fetchERDDAPSST(point, dateStr))
+            this.GULF_POINTS.map(point => this.fetchMarineSST(point))
         );
 
         const validReadings = results.filter(r => r.success && r.sst !== null);
@@ -162,7 +157,7 @@ class DSOWeatherService {
         if (validReadings.length === 0) {
             return {
                 success: false,
-                error: 'No valid SST readings from ERDDAP',
+                error: 'No valid SST readings from Open-Meteo Marine',
                 attemptedPoints: this.GULF_POINTS.length
             };
         }
@@ -186,52 +181,38 @@ class DSOWeatherService {
                 sst: r.sst,
                 timestamp: r.timestamp
             })),
-            dataSource: 'NOAA ERDDAP (Blended SST)',
+            dataSource: 'Open-Meteo Marine',
             timestamp: new Date().toISOString()
         };
     }
 
-    async fetchERDDAPSST(point, dateStr) {
-        // ERDDAP griddap query for single point SST
-        // Format: dataset.json?variable[(time)][(lat)][(lon)]
-        const url = `${this.ERDDAP_API}/${this.SST_DATASET}.json?` +
-            `analysed_sst[(${dateStr}T12:00:00Z)][(${point.lat}):1:(${point.lat})][(${point.lon}):1:(${point.lon})]`;
+    async fetchMarineSST(point) {
+        // Open-Meteo Marine API for sea surface temperature
+        const url = `https://marine-api.open-meteo.com/v1/marine?` +
+            `latitude=${point.lat}&longitude=${point.lon}&current=sea_surface_temperature`;
 
         try {
             const response = await fetch(url);
             if (!response.ok) {
-                throw new Error(`ERDDAP returned ${response.status}`);
+                throw new Error(`Open-Meteo Marine returned ${response.status}`);
             }
 
             const data = await response.json();
 
-            // ERDDAP returns data in table format
-            // columnNames: ["time", "latitude", "longitude", "analysed_sst"]
-            // rows: [[timestamp, lat, lon, sst_kelvin]]
-            if (data.table && data.table.rows && data.table.rows.length > 0) {
-                const row = data.table.rows[0];
-                const sstKelvin = row[3];
-
-                if (sstKelvin === null || isNaN(sstKelvin)) {
-                    return { success: false, name: point.name, error: 'No SST value' };
-                }
-
-                // Convert from Kelvin to Celsius
-                const sstCelsius = sstKelvin - 273.15;
-
+            if (data.current && data.current.sea_surface_temperature !== undefined) {
                 return {
                     success: true,
                     name: point.name,
                     lat: point.lat,
                     lon: point.lon,
-                    sst: sstCelsius,
-                    timestamp: row[0]
+                    sst: data.current.sea_surface_temperature,
+                    timestamp: data.current.time
                 };
             }
 
-            return { success: false, name: point.name, error: 'No data rows returned' };
+            return { success: false, name: point.name, error: 'No SST value in response' };
         } catch (error) {
-            console.error(`ERDDAP SST fetch failed for ${point.name}:`, error);
+            console.error(`Open-Meteo Marine SST fetch failed for ${point.name}:`, error);
             return { success: false, name: point.name, error: error.message };
         }
     }
@@ -776,7 +757,7 @@ class DSOWeatherService {
     }
 
     getShearModifier(shear0_6km, shear0_1km) {
-        if (shear0_6km === null) return 'NO DATA - Cannot assess shear';
+        if (shear0_6km === null || shear0_6km === undefined) return 'NO DATA - Cannot assess shear';
         if (shear0_6km > 40) return `Extreme shear (${shear0_6km.toFixed(0)} kt) - tornado environment`;
         if (shear0_6km > 25) return `Strong shear (${shear0_6km.toFixed(0)} kt) - supercell potential`;
         if (shear0_6km > 15) return `Moderate shear (${shear0_6km.toFixed(0)} kt) - organized storms`;
