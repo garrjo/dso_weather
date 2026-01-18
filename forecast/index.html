@@ -341,7 +341,7 @@
             <div class="location-section">
                 <div class="location">
                     <span class="location-pin">📍</span>
-                    <span id="locationName">Detecting location...</span>
+                    <span id="locationName">Little Rock, AR</span>
                 </div>
                 <select class="location-select" id="locationSelect" onchange="changeLocation()">
                     <optgroup label="📍 Current Location">
@@ -803,6 +803,7 @@
 
             navigator.geolocation.getCurrentPosition(
                 async (position) => {
+                    console.log('Got position:', position.coords);
                     currentLocation.lat = position.coords.latitude;
                     currentLocation.lon = position.coords.longitude;
 
@@ -826,9 +827,15 @@
                     refreshData();
                 },
                 (error) => {
+                    console.error('Geolocation error:', error);
                     alert('Could not detect location: ' + error.message);
                     btn.textContent = '📍 Detect Location';
                     btn.disabled = false;
+                },
+                {
+                    enableHighAccuracy: false,
+                    timeout: 10000,
+                    maximumAge: 300000
                 }
             );
         }
@@ -1072,9 +1079,9 @@
             document.getElementById('gradientGauge').style.width = (forecast.factors.gradient * 100) + '%';
         }
 
-        // Initialize
+        // Initialize with default location (don't auto-detect - let user click)
         initWeatherService();
-        detectLocation();
+        refreshData();
     </script>
 </body>
 </html>
