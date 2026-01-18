@@ -335,6 +335,47 @@
     </style>
 </head>
 <body>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+    ">
+        <div style="font-size: 4rem; margin-bottom: 1rem;">📍</div>
+        <div style="font-size: 1.5rem; color: #fff; margin-bottom: 0.5rem;">Detecting Your Location...</div>
+        <div style="font-size: 0.9rem; color: #a0a0b8;">Please allow location access when prompted</div>
+        <div style="margin-top: 2rem;">
+            <div style="width: 200px; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden;">
+                <div style="width: 30%; height: 100%; background: #4a9eff; border-radius: 2px; animation: loading 1.5s ease-in-out infinite;"></div>
+            </div>
+        </div>
+        <button onclick="skipDetection()" style="
+            margin-top: 2rem;
+            background: transparent;
+            border: 1px solid #3a3a5c;
+            color: #a0a0b8;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        ">Skip - Use Default Location</button>
+    </div>
+    <style>
+        @keyframes loading {
+            0% { transform: translateX(-100%); }
+            50% { transform: translateX(250%); }
+            100% { transform: translateX(-100%); }
+        }
+    </style>
+
     <div class="dashboard">
         <!-- Header -->
         <header class="header">
@@ -1079,11 +1120,22 @@
             document.getElementById('gradientGauge').style.width = (forecast.factors.gradient * 100) + '%';
         }
 
-        // Initialize: show default location data immediately, then try to detect
-        initWeatherService();
-        refreshData();
+        function hideOverlay() {
+            const overlay = document.getElementById('loadingOverlay');
+            if (overlay) {
+                overlay.style.opacity = '0';
+                overlay.style.transition = 'opacity 0.3s';
+                setTimeout(() => overlay.remove(), 300);
+            }
+        }
 
-        // Try to auto-detect location in background (won't block initial load)
+        function skipDetection() {
+            hideOverlay();
+            initWeatherService();
+            refreshData();
+        }
+
+        // Auto-detect location on page load
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 async (position) => {
@@ -1104,12 +1156,23 @@
                     }
 
                     document.getElementById('locationSelect').value = 'auto';
+                    hideOverlay();
                     initWeatherService();
                     refreshData();
                 },
-                (err) => console.log('Auto-detect skipped:', err.message),
-                { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 }
+                (err) => {
+                    console.log('Geolocation denied or failed:', err.message);
+                    hideOverlay();
+                    initWeatherService();
+                    refreshData();
+                },
+                { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
             );
+        } else {
+            // No geolocation support - just load default
+            hideOverlay();
+            initWeatherService();
+            refreshData();
         }
     </script>
 </body>
