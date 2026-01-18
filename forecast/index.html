@@ -450,6 +450,81 @@
             color: var(--text-dim);
         }
 
+        /* Hourly Risk Timeline */
+        .hourly-risk {
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            margin: 0.75rem 0;
+            border-left: 3px solid var(--accent-orange);
+        }
+
+        .hourly-title {
+            font-size: 0.75rem;
+            color: var(--accent-orange);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.25rem;
+            font-weight: 600;
+        }
+
+        .peak-hour {
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .peak-hour .peak-time {
+            color: var(--accent-orange);
+            font-weight: 700;
+        }
+
+        .hourly-strip {
+            display: flex;
+            gap: 2px;
+            overflow-x: auto;
+            padding: 4px 0;
+        }
+
+        .hour-block {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 28px;
+            cursor: pointer;
+        }
+
+        .hour-block:hover {
+            transform: scale(1.1);
+        }
+
+        .hour-bar {
+            width: 20px;
+            border-radius: 3px;
+            transition: height 0.2s;
+        }
+
+        .hour-bar.risk-minimal { background: var(--accent-blue); }
+        .hour-bar.risk-low { background: var(--accent-green); }
+        .hour-bar.risk-moderate { background: var(--accent-orange); }
+        .hour-bar.risk-high { background: var(--accent-red); }
+
+        .hour-label {
+            font-size: 0.6rem;
+            color: var(--text-dim);
+            margin-top: 2px;
+        }
+
+        .hour-block.current .hour-label {
+            color: var(--accent-blue);
+            font-weight: 700;
+        }
+
+        .hour-block.peak .hour-bar {
+            box-shadow: 0 0 8px var(--accent-orange);
+        }
+
         /* Log Overlay */
         .log-overlay {
             position: fixed;
@@ -816,6 +891,13 @@
                 <div class="week-outlook" id="weekOutlook">
                     <div class="outlook-title">7-Day Outlook</div>
                     <div class="outlook-text" id="outlookText">Analyzing conditions...</div>
+                </div>
+                <div class="hourly-risk" id="hourlyRisk">
+                    <div class="hourly-title">Today's Hourly Risk</div>
+                    <div class="peak-hour" id="peakHour">Peak risk: --</div>
+                    <div class="hourly-strip" id="hourlyStrip">
+                        <!-- Populated by JS -->
+                    </div>
                 </div>
                 <div class="quick-stats">
                     <div class="quick-stat">
@@ -1545,6 +1627,108 @@
                 }
                 return forecasts;
             }
+
+            // Get diurnal (hourly) multiplier for solar heating
+            // Convective instability peaks in afternoon (2-6 PM local time)
+            getDiurnalMultiplier(hour) {
+                // Model diurnal heating cycle
+                // Peak at 3 PM (hour 15), minimum at 3 AM (hour 3)
+                const peakHour = 15;
+                const hourOffset = Math.abs(hour - peakHour);
+                // Cosine curve: 1.0 at peak, ~0.2 at trough
+                return 0.2 + 0.8 * Math.cos((hourOffset / 12) * Math.PI) ** 2;
+            }
+
+            // Get hourly risk forecast for today using Bayesian probability
+            getHourlyForecast(lat, realTimeData = null) {
+                const hourlyData = [];
+                const today = new Date();
+                const doy = this.getDayOfYear(today);
+                const currentHour = today.getHours();
+
+                // Get base factors for today
+                const catalyst = this.getCatalyst(doy);
+                const fuel = this.getFuel(lat);
+                const gradient = this.getGradient(lat);
+                const prior = this.getPrior(lat, doy);
+
+                let peakHour = null;
+                let peakRisk = 0;
+
+                for (let hour = 0; hour < 24; hour++) {
+                    // Modulate solar input by diurnal cycle
+                    const baseSolar = this.getSolarAngle(lat, doy);
+                    const diurnalMult = this.getDiurnalMultiplier(hour);
+                    const effectiveSolar = baseSolar * diurnalMult;
+
+                    // Calculate Bayesian probability for this hour
+                    const factors = { catalyst, solar: effectiveSolar, fuel, gradient };
+
+                    // Convert prior to odds and update
+                    let odds = prior / (1 - prior);
+                    odds *= this.getLikelihoodRatio(factors.catalyst, 'catalyst');
+                    odds *= this.getLikelihoodRatio(factors.solar, 'solar');
+                    odds *= this.getLikelihoodRatio(factors.fuel, 'fuel');
+                    odds *= this.getLikelihoodRatio(factors.gradient, 'gradient');
+
+                    const P = Math.max(0.01, Math.min(0.99, odds / (1 + odds)));
+                    const V = gradient * catalyst * effectiveSolar;
+                    const D = fuel * gradient * Math.pow(catalyst, 2) * Math.pow(effectiveSolar, 2);
+
+                    // Composite risk score (weighted combination)
+                    const riskScore = (P * 0.3) + (V * 0.3) + (D * 2.0);
+
+                    // Determine risk level
+                    let riskLevel;
+                    if (D > 0.15 || riskScore > 0.5) {
+                        riskLevel = 'high';
+                    } else if (D > 0.08 || riskScore > 0.3) {
+                        riskLevel = 'moderate';
+                    } else if (D > 0.04 || riskScore > 0.15) {
+                        riskLevel = 'low';
+                    } else {
+                        riskLevel = 'minimal';
+                    }
+
+                    // Track peak hour
+                    if (riskScore > peakRisk) {
+                        peakRisk = riskScore;
+                        peakHour = hour;
+                    }
+
+                    hourlyData.push({
+                        hour: hour,
+                        label: hour === 0 ? '12a' : hour < 12 ? `${hour}a` : hour === 12 ? '12p' : `${hour - 12}p`,
+                        P: P,
+                        V: V,
+                        D: D,
+                        riskScore: riskScore,
+                        riskLevel: riskLevel,
+                        isCurrent: hour === currentHour,
+                        isPeak: false,  // Will set below
+                        diurnalMultiplier: diurnalMult
+                    });
+                }
+
+                // Mark peak hour
+                if (peakHour !== null) {
+                    hourlyData[peakHour].isPeak = true;
+                }
+
+                return {
+                    hourly: hourlyData,
+                    peakHour: peakHour,
+                    peakRisk: peakRisk,
+                    peakTime: peakHour !== null ? this.formatHour(peakHour) : null
+                };
+            }
+
+            formatHour(hour) {
+                if (hour === 0) return '12:00 AM';
+                if (hour < 12) return `${hour}:00 AM`;
+                if (hour === 12) return '12:00 PM';
+                return `${hour - 12}:00 PM`;
+            }
         }
 
         const dsoEngine = new DSOEngine();
@@ -1660,6 +1844,7 @@
                 buildForecastStrip();
                 buildMonthRiskStrip();
                 generateWeekOutlook();
+                buildHourlyRiskStrip();
                 logDailyForecast();  // Log forecast to localStorage for accuracy tracking
             } catch (e) {
                 console.error('Forecast strip error:', e);
@@ -2157,6 +2342,54 @@
         function closeLogOverlay(event) {
             if (event && event.target !== event.currentTarget) return;
             document.getElementById('logOverlay').classList.remove('active');
+        }
+
+        // Build hourly risk timeline for today
+        function buildHourlyRiskStrip() {
+            const strip = document.getElementById('hourlyStrip');
+            const peakEl = document.getElementById('peakHour');
+            strip.innerHTML = '';
+
+            const hourlyForecast = dsoEngine.getHourlyForecast(currentLocation.lat);
+            const { hourly, peakHour, peakTime, peakRisk } = hourlyForecast;
+
+            // Determine what type of weather at peak
+            const peakData = hourly[peakHour];
+            let peakDescription = '';
+            if (peakData) {
+                if (peakData.riskLevel === 'high') {
+                    peakDescription = `Peak severe risk at <span class="peak-time">${peakTime}</span> (D=${peakData.D.toFixed(3)}, P=${(peakData.P * 100).toFixed(0)}%)`;
+                } else if (peakData.riskLevel === 'moderate') {
+                    peakDescription = `Elevated risk around <span class="peak-time">${peakTime}</span> (D=${peakData.D.toFixed(3)}, P=${(peakData.P * 100).toFixed(0)}%)`;
+                } else if (peakData.riskLevel === 'low') {
+                    peakDescription = `Minor activity possible near <span class="peak-time">${peakTime}</span> (P=${(peakData.P * 100).toFixed(0)}%)`;
+                } else {
+                    peakDescription = `Low risk throughout the day. Highest around <span class="peak-time">${peakTime}</span>`;
+                }
+            }
+            peakEl.innerHTML = peakDescription;
+
+            // Find max risk for scaling
+            const maxRisk = Math.max(...hourly.map(h => h.riskScore), 0.1);
+
+            // Build hour blocks
+            hourly.forEach((h, i) => {
+                const block = document.createElement('div');
+                block.className = 'hour-block' +
+                    (h.isCurrent ? ' current' : '') +
+                    (h.isPeak ? ' peak' : '');
+
+                // Bar height based on risk score (min 4px, max 40px)
+                const barHeight = Math.max(4, (h.riskScore / maxRisk) * 40);
+
+                block.innerHTML = `
+                    <div class="hour-bar risk-${h.riskLevel}" style="height: ${barHeight}px;"
+                         title="${h.label}: P=${(h.P * 100).toFixed(0)}% D=${h.D.toFixed(3)}"></div>
+                    <div class="hour-label">${i % 3 === 0 ? h.label : ''}</div>
+                `;
+
+                strip.appendChild(block);
+            });
         }
 
         // Build 6-month risk outlook
