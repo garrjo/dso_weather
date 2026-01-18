@@ -1171,14 +1171,19 @@
             }
         }
 
-        // Load saved theme
-        (function() {
+        // Load saved theme on page ready
+        function loadSavedTheme() {
             const saved = localStorage.getItem('theme');
+            const btn = document.getElementById('themeBtn');
             if (saved === 'light') {
                 document.documentElement.setAttribute('data-theme', 'light');
-                document.getElementById('themeBtn').textContent = '🌙 Dark';
+                if (btn) btn.textContent = '🌙 Dark';
+            } else {
+                document.documentElement.removeAttribute('data-theme');
+                if (btn) btn.textContent = '☀️ Light';
             }
-        })();
+        }
+        loadSavedTheme();
 
         function hideOverlay() {
             const overlay = document.getElementById('loadingOverlay');
