@@ -1079,9 +1079,38 @@
             document.getElementById('gradientGauge').style.width = (forecast.factors.gradient * 100) + '%';
         }
 
-        // Initialize with default location (don't auto-detect - let user click)
+        // Initialize: show default location data immediately, then try to detect
         initWeatherService();
         refreshData();
+
+        // Try to auto-detect location in background (won't block initial load)
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    currentLocation.lat = position.coords.latitude;
+                    currentLocation.lon = position.coords.longitude;
+
+                    // Get location name
+                    try {
+                        const resp = await fetch(`https://api.weather.gov/points/${currentLocation.lat.toFixed(4)},${currentLocation.lon.toFixed(4)}`);
+                        if (resp.ok) {
+                            const data = await resp.json();
+                            const city = data.properties?.relativeLocation?.properties?.city || '';
+                            const state = data.properties?.relativeLocation?.properties?.state || '';
+                            currentLocation.name = city && state ? `${city}, ${state}` : `${currentLocation.lat.toFixed(2)}°, ${currentLocation.lon.toFixed(2)}°`;
+                        }
+                    } catch (e) {
+                        currentLocation.name = `${currentLocation.lat.toFixed(2)}°, ${currentLocation.lon.toFixed(2)}°`;
+                    }
+
+                    document.getElementById('locationSelect').value = 'auto';
+                    initWeatherService();
+                    refreshData();
+                },
+                (err) => console.log('Auto-detect skipped:', err.message),
+                { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 }
+            );
+        }
     </script>
 </body>
 </html>
