@@ -778,12 +778,10 @@
                 // Classification based on P (probability) as primary driver
                 if (D > 0.15 && V > 0.3) {
                     condition = 'Severe Storms'; icon = '⛈️'; description = 'High severe weather potential';
-                } else if (P >= 0.50) {
+                } else if (P >= 0.65) {
                     condition = 'Rain'; icon = '🌧️'; description = 'Rain expected';
-                } else if (P >= 0.40) {
-                    condition = 'Showers Likely'; icon = '🌦️'; description = 'Showers likely';
                 } else if (P >= 0.25) {
-                    condition = 'Scattered Showers'; icon = '🌦️'; description = 'Scattered showers possible';
+                    condition = 'Sporadic Showers'; icon = '🌦️'; description = 'Sporadic showers possible';
                 } else if (P >= 0.15) {
                     condition = 'Partly Cloudy'; icon = '⛅'; description = 'Partly cloudy skies';
                 } else if (P >= 0.08) {
