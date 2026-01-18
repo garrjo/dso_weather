@@ -233,12 +233,12 @@
         }
 
         .forecast-day {
-            flex: 0 0 auto;
+            flex: 1 1 0;
             background: var(--bg-card);
             border-radius: 12px;
             padding: 1rem 1.25rem;
             text-align: center;
-            min-width: 100px;
+            min-width: 80px;
             cursor: pointer;
             transition: all 0.2s;
             border: 2px solid transparent;
@@ -736,7 +736,184 @@
     <script src="noaaWeatherService.js"></script>
 
     <script>
-        // Initialize weather service
+        // ═══════════════════════════════════════════════════════════════
+        // DSO WEATHER ENGINE - Embedded for weather prediction
+        // ═══════════════════════════════════════════════════════════════
+        class DSOEngine {
+            constructor() {
+                this.EARTH_TILT = 23.44;
+                this.DAYS_PER_YEAR = 365.25;
+                this.SPRING_EQUINOX_DOY = 80;
+
+                // Arkansas region config
+                this.region = {
+                    lat: 34.7465,
+                    fuel: 0.88,      // Good Gulf access
+                    gradient: 0.92   // In Dixie Alley gradient zone
+                };
+            }
+
+            getDayOfYear(date = new Date()) {
+                const start = new Date(date.getFullYear(), 0, 0);
+                const diff = date - start;
+                return Math.floor(diff / (1000 * 60 * 60 * 24));
+            }
+
+            // Catalyst (dθ/dt) - Earth's tilt rate
+            getCatalyst(dayOfYear) {
+                const shifted = dayOfYear - this.SPRING_EQUINOX_DOY;
+                return Math.abs(Math.cos((2 * Math.PI * shifted) / this.DAYS_PER_YEAR));
+            }
+
+            // Solar Incidence Angle
+            getSolarAngle(lat, dayOfYear) {
+                const latRad = (lat * Math.PI) / 180;
+                const declination = this.EARTH_TILT * Math.sin(
+                    (2 * Math.PI * (dayOfYear - 81)) / this.DAYS_PER_YEAR
+                );
+                const decRad = (declination * Math.PI) / 180;
+                const solarElevation = Math.asin(
+                    Math.sin(latRad) * Math.sin(decRad) +
+                    Math.cos(latRad) * Math.cos(decRad)
+                );
+                return Math.max(0, Math.sin(solarElevation));
+            }
+
+            // DSO Indices
+            getProbability(fuel, catalyst, solar) {
+                return fuel * catalyst * solar;
+            }
+
+            getVolatility(gradient, catalyst, solar) {
+                return gradient * catalyst * solar;
+            }
+
+            getDanger(fuel, gradient, catalyst, solar) {
+                return fuel * gradient * Math.pow(catalyst, 2) * Math.pow(solar, 2);
+            }
+
+            // Weather condition classification based on DSO factors
+            classifyWeather(dayOfYear, realTimeData = null) {
+                const catalyst = this.getCatalyst(dayOfYear);
+                const solar = this.getSolarAngle(this.region.lat, dayOfYear);
+                const fuel = this.region.fuel;
+                const gradient = this.region.gradient;
+
+                const P = this.getProbability(fuel, catalyst, solar);
+                const V = this.getVolatility(gradient, catalyst, solar);
+                const D = this.getDanger(fuel, gradient, catalyst, solar);
+
+                // Override with real-time humidity if available
+                let effectiveFuel = fuel;
+                if (realTimeData?.humidity !== null && realTimeData?.humidity !== undefined) {
+                    effectiveFuel = fuel * (realTimeData.humidity / 100);
+                }
+
+                // Classify weather condition based on DSO geometry
+                let condition, icon, description;
+
+                if (D > 0.15 && V > 0.3) {
+                    // Severe potential
+                    condition = 'Severe Storms';
+                    icon = '⛈️';
+                    description = 'High severe weather potential';
+                } else if (P > 0.25 && catalyst > 0.5) {
+                    // Thunderstorm likely
+                    condition = 'Thunderstorms';
+                    icon = '⛈️';
+                    description = 'Thunderstorms likely';
+                } else if (P > 0.15 && effectiveFuel > 0.5) {
+                    // Rain likely
+                    condition = 'Rain';
+                    icon = '🌧️';
+                    description = 'Rain likely';
+                } else if (effectiveFuel > 0.6 && catalyst < 0.4) {
+                    // Cloudy but stable (high moisture, low catalyst)
+                    condition = 'Cloudy';
+                    icon = '☁️';
+                    description = 'Overcast skies';
+                } else if (effectiveFuel > 0.4 && solar > 0.5) {
+                    // Partly cloudy
+                    condition = 'Partly Cloudy';
+                    icon = '⛅';
+                    description = 'Mix of sun and clouds';
+                } else if (solar > 0.6 && catalyst < 0.5 && effectiveFuel < 0.5) {
+                    // Clear/Sunny
+                    condition = 'Sunny';
+                    icon = '☀️';
+                    description = 'Clear skies';
+                } else if (solar > 0.4) {
+                    // Mostly clear
+                    condition = 'Mostly Clear';
+                    icon = '🌤️';
+                    description = 'Mostly clear skies';
+                } else if (solar < 0.3 && catalyst > 0.5 && gradient > 0.6) {
+                    // Winter storm potential
+                    condition = 'Winter Mix';
+                    icon = '🌨️';
+                    description = 'Wintry conditions possible';
+                } else {
+                    condition = 'Fair';
+                    icon = '🌤️';
+                    description = 'Fair conditions';
+                }
+
+                // Risk level
+                let riskLevel, riskColor;
+                if (D > 0.2) {
+                    riskLevel = 'HIGH';
+                    riskColor = 'var(--accent-red)';
+                } else if (D > 0.1) {
+                    riskLevel = 'MODERATE';
+                    riskColor = 'var(--accent-orange)';
+                } else if (D > 0.05) {
+                    riskLevel = 'LOW';
+                    riskColor = 'var(--accent-green)';
+                } else {
+                    riskLevel = 'MINIMAL';
+                    riskColor = 'var(--accent-blue)';
+                }
+
+                return {
+                    condition,
+                    icon,
+                    description,
+                    riskLevel,
+                    riskColor,
+                    factors: { catalyst, solar, fuel: effectiveFuel, gradient },
+                    indices: { P, V, D }
+                };
+            }
+
+            // Get forecast for a specific date
+            getForecast(date) {
+                const doy = this.getDayOfYear(date);
+                return this.classifyWeather(doy);
+            }
+
+            // Get 7-day forecast
+            get7DayForecast() {
+                const forecasts = [];
+                const today = new Date();
+
+                for (let i = 0; i < 7; i++) {
+                    const date = new Date(today);
+                    date.setDate(date.getDate() + i);
+                    const forecast = this.getForecast(date);
+                    forecast.date = date;
+                    forecast.dayName = i === 0 ? 'Today' : date.toLocaleDateString('en-US', { weekday: 'short' });
+                    forecast.dateNum = date.getDate();
+                    forecasts.push(forecast);
+                }
+
+                return forecasts;
+            }
+        }
+
+        // Initialize DSO engine
+        const dsoEngine = new DSOEngine();
+
+        // Initialize weather service for real-time data
         const weatherService = new DSOWeatherService({
             location: {
                 name: 'Arkansas',
@@ -746,31 +923,6 @@
                 nwsOffice: 'LZK'
             }
         });
-
-        // Weather icons mapping
-        const weatherIcons = {
-            clear: '☀️',
-            sunny: '☀️',
-            'mostly clear': '🌤️',
-            'partly cloudy': '⛅',
-            cloudy: '☁️',
-            overcast: '☁️',
-            rain: '🌧️',
-            showers: '🌦️',
-            thunderstorm: '⛈️',
-            snow: '❄️',
-            fog: '🌫️',
-            default: '🌤️'
-        };
-
-        function getWeatherIcon(condition) {
-            if (!condition) return weatherIcons.default;
-            const lower = condition.toLowerCase();
-            for (const [key, icon] of Object.entries(weatherIcons)) {
-                if (lower.includes(key)) return icon;
-            }
-            return weatherIcons.default;
-        }
 
         // Refresh data
         async function refreshData() {
@@ -825,12 +977,14 @@
             const solarDeg = getRaw(vars.solarAngle?.incidenceDegrees);
             const cape = getRaw(vars.energyDispersal?.cape);
 
-            // Current Weather
+            // Current Weather - Use DSO for condition prediction
+            const todayDSO = dsoEngine.classifyWeather(dsoEngine.getDayOfYear(), { humidity: rh });
+
             document.getElementById('currentTemp').textContent = formatValue(tempF);
-            document.getElementById('condition').textContent = tempF !== null ? (tempF > 70 ? 'Warm' : tempF > 50 ? 'Cool' : 'Cold') : 'Unknown';
+            document.getElementById('condition').textContent = todayDSO.condition;
             document.getElementById('feelsLike').textContent = formatValue(tempF); // Simplified
-            document.getElementById('weatherIcon').textContent = tempF !== null ? (tempF > 70 ? '☀️' : tempF > 40 ? '🌤️' : '❄️') : '🌤️';
-            document.getElementById('weatherSummary').textContent = `Current temperature is ${formatValue(tempF)}°F with ${formatValue(rh)}% humidity.`;
+            document.getElementById('weatherIcon').textContent = todayDSO.icon;
+            document.getElementById('weatherSummary').textContent = `${todayDSO.description}. Current: ${formatValue(tempF)}°F with ${formatValue(rh)}% humidity.`;
 
             // Quick Stats
             document.getElementById('windSpeed').textContent = formatValue(windSpd, 1);
@@ -926,33 +1080,79 @@
             buildForecastStrip();
         }
 
-        // Build forecast strip
+        // Build forecast strip using DSO predictions
         function buildForecastStrip() {
             const strip = document.getElementById('forecastStrip');
             strip.innerHTML = '';
 
-            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-            const today = new Date();
+            // Get 7-day DSO forecast
+            const forecasts = dsoEngine.get7DayForecast();
 
-            for (let i = 0; i < 7; i++) {
-                const date = new Date(today);
-                date.setDate(date.getDate() + i);
-                const dayName = i === 0 ? 'Today' : days[date.getDay()];
-                const dateStr = date.getDate();
-
+            forecasts.forEach((forecast, i) => {
                 const card = document.createElement('div');
                 card.className = 'forecast-day' + (i === 0 ? ' active' : '');
+
+                // Build risk indicator color
+                const riskDot = forecast.riskLevel !== 'MINIMAL'
+                    ? `<div style="width:8px;height:8px;border-radius:50%;background:${forecast.riskColor};margin:0 auto 4px;"></div>`
+                    : '';
+
                 card.innerHTML = `
-                    <div class="forecast-day-name">${dayName}</div>
-                    <div class="forecast-day-date">${dateStr}</div>
-                    <div class="forecast-icon">🌤️</div>
-                    <div class="forecast-temps">
-                        <span class="forecast-high">--°</span>
-                        <span class="forecast-low">--°</span>
+                    <div class="forecast-day-name">${forecast.dayName}</div>
+                    <div class="forecast-day-date">${forecast.dateNum}</div>
+                    ${riskDot}
+                    <div class="forecast-icon">${forecast.icon}</div>
+                    <div class="forecast-temps" style="font-size:0.75rem;color:var(--text-secondary);">
+                        ${forecast.condition}
+                    </div>
+                    <div style="font-size:0.65rem;color:var(--text-dim);margin-top:4px;">
+                        D: ${forecast.indices.D.toFixed(3)}
                     </div>
                 `;
+
+                // Click to show details
+                card.onclick = () => showDayDetails(forecast, i);
                 strip.appendChild(card);
-            }
+            });
+        }
+
+        // Show detailed forecast for selected day
+        function showDayDetails(forecast, index) {
+            // Update active state
+            document.querySelectorAll('.forecast-day').forEach((el, i) => {
+                el.classList.toggle('active', i === index);
+            });
+
+            // Update current weather display with selected day's DSO prediction
+            document.getElementById('weatherIcon').textContent = forecast.icon;
+            document.getElementById('condition').textContent = forecast.condition;
+            document.getElementById('weatherSummary').textContent =
+                `${forecast.description}. DSO Risk: ${forecast.riskLevel}`;
+
+            // Update DSO indices for selected day
+            document.getElementById('dsoP').textContent = forecast.indices.P.toFixed(3);
+            document.getElementById('dsoV').textContent = forecast.indices.V.toFixed(3);
+            document.getElementById('dsoD').textContent = forecast.indices.D.toFixed(4);
+
+            // Update risk display
+            document.getElementById('riskLevel').textContent = forecast.riskLevel;
+            document.getElementById('riskLevel').style.color = forecast.riskColor;
+            document.getElementById('riskBadge').textContent = forecast.riskLevel;
+            document.getElementById('riskBadge').className = 'risk-badge risk-' + forecast.riskLevel.toLowerCase();
+
+            const riskPct = forecast.riskLevel === 'HIGH' ? 90 :
+                           forecast.riskLevel === 'MODERATE' ? 60 :
+                           forecast.riskLevel === 'LOW' ? 35 : 10;
+            document.getElementById('riskGauge').style.width = riskPct + '%';
+            document.getElementById('riskSummary').textContent = forecast.description;
+
+            // Update DSO factor cards
+            document.getElementById('catalyst').textContent = forecast.factors.catalyst.toFixed(3);
+            document.getElementById('catalystGauge').style.width = (forecast.factors.catalyst * 100) + '%';
+            document.getElementById('solarAngle').textContent = (Math.asin(forecast.factors.solar) * 180 / Math.PI).toFixed(1);
+            document.getElementById('solarGauge').style.width = (forecast.factors.solar * 100) + '%';
+            document.getElementById('gradient').textContent = forecast.factors.gradient.toFixed(3);
+            document.getElementById('gradientGauge').style.width = (forecast.factors.gradient * 100) + '%';
         }
 
         // Initialize
