@@ -199,7 +199,8 @@
         .forecast-day-name { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.25rem; }
         .forecast-day-date { font-size: 0.75rem; color: var(--text-dim); margin-bottom: 0.5rem; }
         .forecast-icon { font-size: 1.75rem; margin: 0.25rem 0; }
-        .forecast-condition { font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 0.5rem; }
+        .forecast-condition { font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 0.25rem; }
+        .forecast-rain-chance { font-size: 0.7rem; color: var(--accent-blue); margin-bottom: 0.5rem; font-weight: 500; }
 
         .forecast-indices {
             display: flex;
@@ -1070,11 +1071,14 @@
                 const card = document.createElement('div');
                 card.className = 'forecast-day' + (i === 0 ? ' active' : '');
 
+                const rainChance = Math.round(forecast.indices.P * 100);
+
                 card.innerHTML = `
                     <div class="forecast-day-name">${forecast.dayName}</div>
                     <div class="forecast-day-date">${forecast.dateNum}</div>
                     <div class="forecast-icon">${forecast.icon}</div>
                     <div class="forecast-condition">${forecast.condition}</div>
+                    <div class="forecast-rain-chance">${rainChance}% chance of rain</div>
                     <div class="forecast-indices">
                         <div class="forecast-index">
                             <span class="forecast-index-label">P</span>
