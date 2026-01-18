@@ -424,7 +424,23 @@
         .forecast-day-date { font-size: 0.75rem; color: var(--text-dim); margin-bottom: 0.5rem; }
         .forecast-icon { font-size: 1.75rem; margin: 0.25rem 0; }
         .forecast-condition { font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 0.25rem; }
-        .forecast-rain-chance { font-size: 0.7rem; color: var(--accent-blue); margin-bottom: 0.5rem; font-weight: 500; }
+        .forecast-rain-chance { font-size: 0.7rem; color: var(--accent-blue); margin-bottom: 0.25rem; font-weight: 500; }
+        .forecast-rain-chance .drift-range { font-size: 0.6rem; color: var(--text-dim); font-weight: 400; }
+
+        .forecast-confidence {
+            font-size: 0.6rem;
+            color: var(--text-dim);
+            margin-bottom: 0.5rem;
+            padding: 2px 6px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        .drift-indicator {
+            color: var(--accent-orange);
+            font-weight: 600;
+        }
 
         .forecast-indices {
             display: flex;
@@ -949,18 +965,61 @@
         };
 
         // ═══════════════════════════════════════════════════════════════
-        // DSO WEATHER ENGINE
+        // DSO WEATHER ENGINE (Bayesian Probability Model)
         // ═══════════════════════════════════════════════════════════════
         class DSOEngine {
             constructor() {
                 this.EARTH_TILT = 23.44;
                 this.DAYS_PER_YEAR = 365.25;
                 this.SPRING_EQUINOX_DOY = 80;
+
+                // Drift: 8% uncertainty per month (consistent with monthly outlook)
+                this.MONTHLY_DRIFT = 0.08;  // 8% per month
+                this.MAX_DRIFT = 0.96;      // 12 months max = 96% uncertainty (4% confidence minimum)
+
+                // Climate normals: historical precipitation probability by month
+                // Based on NOAA climatology for different latitude bands
+                this.climateNormals = {
+                    // Month index (0-11): [tropical, subtropical, temperate, continental]
+                    0:  [0.15, 0.28, 0.35, 0.25],  // January
+                    1:  [0.18, 0.30, 0.32, 0.22],  // February
+                    2:  [0.22, 0.35, 0.38, 0.28],  // March
+                    3:  [0.28, 0.38, 0.40, 0.35],  // April
+                    4:  [0.35, 0.42, 0.42, 0.40],  // May
+                    5:  [0.45, 0.48, 0.38, 0.42],  // June
+                    6:  [0.50, 0.52, 0.35, 0.38],  // July
+                    7:  [0.52, 0.50, 0.35, 0.38],  // August
+                    8:  [0.45, 0.45, 0.32, 0.32],  // September
+                    9:  [0.35, 0.35, 0.30, 0.28],  // October
+                    10: [0.22, 0.30, 0.35, 0.28],  // November
+                    11: [0.15, 0.28, 0.38, 0.25]   // December
+                };
             }
 
             getDayOfYear(date = new Date()) {
                 const start = new Date(date.getFullYear(), 0, 0);
                 return Math.floor((date - start) / (1000 * 60 * 60 * 24));
+            }
+
+            getMonthFromDOY(dayOfYear) {
+                const date = new Date(new Date().getFullYear(), 0, dayOfYear);
+                return date.getMonth();
+            }
+
+            // Get climate zone index based on latitude
+            getClimateZone(lat) {
+                const absLat = Math.abs(lat);
+                if (absLat < 23.5) return 0;      // Tropical
+                if (absLat < 35) return 1;        // Subtropical
+                if (absLat < 50) return 2;        // Temperate
+                return 3;                          // Continental/Polar
+            }
+
+            // Get prior probability from climate normals
+            getPrior(lat, dayOfYear) {
+                const month = this.getMonthFromDOY(dayOfYear);
+                const zone = this.getClimateZone(lat);
+                return this.climateNormals[month][zone];
             }
 
             getCatalyst(dayOfYear) {
@@ -980,7 +1039,6 @@
 
             // Calculate fuel based on latitude (distance from Gulf)
             getFuel(lat) {
-                // Gulf is ~25°N, fuel decreases with distance
                 const gulfLat = 25;
                 const distance = Math.abs(lat - gulfLat);
                 if (distance < 5) return 0.95;
@@ -993,7 +1051,6 @@
 
             // Calculate gradient based on latitude (Dixie/Tornado Alley zones)
             getGradient(lat) {
-                // Peak gradient zone: 33-38°N (Tornado/Dixie Alley)
                 if (lat >= 33 && lat <= 38) return 0.95;
                 if (lat >= 30 && lat < 33) return 0.80;
                 if (lat > 38 && lat <= 42) return 0.85;
@@ -1001,8 +1058,68 @@
                 return Math.max(0.3, 0.60 - Math.abs(lat - 35) * 0.02);
             }
 
-            getProbability(fuel, catalyst, solar) {
-                return fuel * catalyst * solar;
+            // Calculate drift (uncertainty) based on time into forecast
+            // Uses 8% per month formula: drift = 8% × months
+            getDrift(daysAhead) {
+                const monthsAhead = daysAhead / 30;  // Convert days to fractional months
+                return Math.min(this.MAX_DRIFT, monthsAhead * this.MONTHLY_DRIFT);
+            }
+
+            // Get drift for whole months (for monthly outlook)
+            getMonthlyDrift(monthsAhead) {
+                return Math.min(this.MAX_DRIFT, monthsAhead * this.MONTHLY_DRIFT);
+            }
+
+            // Bayesian likelihood ratio for each factor
+            // Returns how much more likely precipitation is given this factor value
+            getLikelihoodRatio(factor, factorType) {
+                switch (factorType) {
+                    case 'catalyst':
+                        // High catalyst (near equinox) increases precip likelihood
+                        return 0.5 + factor * 1.5;  // Range: 0.5 to 2.0
+                    case 'solar':
+                        // Higher solar = more convective energy = more precip potential
+                        return 0.6 + factor * 1.2;  // Range: 0.6 to 1.8
+                    case 'fuel':
+                        // More moisture = higher precip likelihood
+                        return 0.4 + factor * 1.8;  // Range: 0.4 to 2.2
+                    case 'gradient':
+                        // Stronger gradient = more frontal activity
+                        return 0.5 + factor * 1.5;  // Range: 0.5 to 2.0
+                    default:
+                        return 1.0;
+                }
+            }
+
+            // Bayesian update: P(Rain|Evidence) = P(E|Rain) * P(Rain) / P(E)
+            // Simplified using odds form for multiple evidence
+            bayesianProbability(prior, factors) {
+                // Convert prior to odds
+                let odds = prior / (1 - prior);
+
+                // Update odds with each likelihood ratio
+                odds *= this.getLikelihoodRatio(factors.catalyst, 'catalyst');
+                odds *= this.getLikelihoodRatio(factors.solar, 'solar');
+                odds *= this.getLikelihoodRatio(factors.fuel, 'fuel');
+                odds *= this.getLikelihoodRatio(factors.gradient, 'gradient');
+
+                // Convert back to probability
+                const posterior = odds / (1 + odds);
+
+                // Clamp to valid probability range
+                return Math.max(0.01, Math.min(0.99, posterior));
+            }
+
+            // Apply drift to create confidence interval
+            applyDrift(probability, daysAhead) {
+                const drift = this.getDrift(daysAhead);
+                return {
+                    probability: probability,
+                    low: Math.max(0, probability - drift),
+                    high: Math.min(1, probability + drift),
+                    drift: drift,
+                    confidence: 1 - drift
+                };
             }
 
             getVolatility(gradient, catalyst, solar) {
@@ -1013,7 +1130,7 @@
                 return fuel * gradient * Math.pow(catalyst, 2) * Math.pow(solar, 2);
             }
 
-            classifyWeather(lat, dayOfYear, realTimeData = null) {
+            classifyWeather(lat, dayOfYear, realTimeData = null, daysAhead = 0) {
                 const catalyst = this.getCatalyst(dayOfYear);
                 const solar = this.getSolarAngle(lat, dayOfYear);
                 const fuel = this.getFuel(lat);
@@ -1024,19 +1141,31 @@
                     effectiveFuel = fuel * (realTimeData.humidity / 100);
                 }
 
-                const P = this.getProbability(effectiveFuel, catalyst, solar);
+                // Get climate prior
+                const prior = this.getPrior(lat, dayOfYear);
+
+                // Calculate Bayesian posterior probability
+                const factors = { catalyst, solar, fuel: effectiveFuel, gradient };
+                const rawP = this.bayesianProbability(prior, factors);
+
+                // Apply drift for forecast uncertainty
+                const pWithDrift = this.applyDrift(rawP, daysAhead);
+
                 const V = this.getVolatility(gradient, catalyst, solar);
                 const D = this.getDanger(effectiveFuel, gradient, catalyst, solar);
 
                 let condition, icon, description;
+                const P = pWithDrift.probability;
 
-                // Classification based on P (probability) as primary driver
+                // Classification based on Bayesian probability
                 if (D > 0.15 && V > 0.3) {
                     condition = 'Severe Storms'; icon = '⛈️'; description = 'High severe weather potential';
                 } else if (P >= 0.65) {
                     condition = 'Rain'; icon = '🌧️'; description = 'Rain expected';
+                } else if (P >= 0.40) {
+                    condition = 'Scattered Showers'; icon = '🌦️'; description = 'Scattered showers likely';
                 } else if (P >= 0.25) {
-                    condition = 'Scattered Showers'; icon = '🌦️'; description = 'Scattered showers possible';
+                    condition = 'Chance of Showers'; icon = '🌦️'; description = 'Chance of showers';
                 } else if (P >= 0.15) {
                     condition = 'Partly Cloudy'; icon = '⛅'; description = 'Partly cloudy skies';
                 } else if (P >= 0.08) {
@@ -1054,7 +1183,14 @@
                 return {
                     condition, icon, description, riskLevel, riskColor,
                     factors: { catalyst, solar, fuel: effectiveFuel, gradient },
-                    indices: { P, V, D }
+                    indices: { P, V, D },
+                    bayesian: {
+                        prior: prior,
+                        posterior: P,
+                        drift: pWithDrift.drift,
+                        confidence: pWithDrift.confidence,
+                        range: { low: pWithDrift.low, high: pWithDrift.high }
+                    }
                 };
             }
 
@@ -1065,10 +1201,11 @@
                     const date = new Date(today);
                     date.setDate(date.getDate() + i);
                     const doy = this.getDayOfYear(date);
-                    const forecast = this.classifyWeather(lat, doy);
+                    const forecast = this.classifyWeather(lat, doy, null, i);  // Pass days ahead for drift
                     forecast.date = date;
                     forecast.dayName = i === 0 ? 'Today' : date.toLocaleDateString('en-US', { weekday: 'short' });
                     forecast.dateNum = date.getDate();
+                    forecast.daysAhead = i;
                     forecasts.push(forecast);
                 }
                 return forecasts;
@@ -1325,13 +1462,27 @@
                 card.className = 'forecast-day' + (i === 0 ? ' active' : '');
 
                 const rainChance = Math.round(forecast.indices.P * 100);
+                const bayesian = forecast.bayesian;
+                const driftPct = Math.round(bayesian.drift * 100);
+                const confPct = Math.round(bayesian.confidence * 100);
+                const lowPct = Math.round(bayesian.range.low * 100);
+                const highPct = Math.round(bayesian.range.high * 100);
+                const priorPct = Math.round(bayesian.prior * 100);
+
+                // Show range if there's drift, otherwise just the value
+                const rainDisplay = driftPct > 0
+                    ? `${rainChance}% <span class="drift-range">(${lowPct}-${highPct}%)</span>`
+                    : `${rainChance}%`;
 
                 card.innerHTML = `
                     <div class="forecast-day-name">${forecast.dayName}</div>
                     <div class="forecast-day-date">${forecast.dateNum}</div>
                     <div class="forecast-icon">${forecast.icon}</div>
                     <div class="forecast-condition">${forecast.condition}</div>
-                    <div class="forecast-rain-chance">${rainChance}% chance of rain</div>
+                    <div class="forecast-rain-chance">${rainDisplay} rain</div>
+                    <div class="forecast-confidence" title="Prior: ${priorPct}% → Posterior: ${rainChance}%">
+                        ${confPct}% conf ${driftPct > 0 ? `<span class="drift-indicator">±${driftPct}%</span>` : ''}
+                    </div>
                     <div class="forecast-indices">
                         <div class="forecast-index">
                             <span class="forecast-index-label">P</span>
@@ -1392,6 +1543,22 @@
 
             // Build explanation parts
             let explanations = [];
+
+            // Bayesian model explanation
+            const priorPct = Math.round(today.bayesian.prior * 100);
+            const posteriorPct = Math.round(today.bayesian.posterior * 100);
+            const weekEndDrift = Math.round(endOfWeek.bayesian.drift * 100);
+
+            if (posteriorPct > priorPct + 10) {
+                explanations.push(`Climate baseline for this month is ${priorPct}% precipitation, but DSO factors <span class="outlook-trend trend-up">elevate today's probability to ${posteriorPct}%</span>.`);
+            } else if (posteriorPct < priorPct - 10) {
+                explanations.push(`Climate baseline for this month is ${priorPct}% precipitation, but DSO factors <span class="outlook-trend trend-down">reduce today's probability to ${posteriorPct}%</span>.`);
+            }
+
+            // Drift explanation
+            if (weekEndDrift > 0) {
+                explanations.push(`Forecast uncertainty increases to <span class="drift-indicator">±${weekEndDrift}%</span> by day 7 (8%/month drift).`);
+            }
 
             // Catalyst explanation
             if (approachingEquinox) {
