@@ -776,21 +776,19 @@
                 let condition, icon, description;
 
                 // Classification based on P (probability) as primary driver
-                // P < 25% = good weather, P >= 25% = precipitation possible
                 if (D > 0.15 && V > 0.3) {
                     condition = 'Severe Storms'; icon = '⛈️'; description = 'High severe weather potential';
-                } else if (P >= 0.35) {
-                    condition = 'Thunderstorms'; icon = '⛈️'; description = 'Thunderstorms likely';
+                } else if (P >= 0.50) {
+                    condition = 'Rain'; icon = '🌧️'; description = 'Rain expected';
+                } else if (P >= 0.40) {
+                    condition = 'Showers Likely'; icon = '🌦️'; description = 'Showers likely';
                 } else if (P >= 0.25) {
-                    condition = 'Rain'; icon = '🌧️'; description = 'Rain likely';
+                    condition = 'Scattered Showers'; icon = '🌦️'; description = 'Scattered showers possible';
                 } else if (P >= 0.15) {
-                    // 15-25%: fair but some clouds
                     condition = 'Partly Cloudy'; icon = '⛅'; description = 'Partly cloudy skies';
                 } else if (P >= 0.08) {
-                    // 8-15%: mostly clear
                     condition = 'Mostly Sunny'; icon = '🌤️'; description = 'Mostly sunny skies';
                 } else {
-                    // < 8%: clear/sunny
                     condition = 'Sunny'; icon = '☀️'; description = 'Clear and sunny';
                 }
 
