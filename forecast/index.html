@@ -864,7 +864,7 @@
                     document.getElementById('locationSelect').value = 'auto';
                     btn.textContent = '📍 Detect Location';
                     btn.disabled = false;
-                    initWeatherService();
+                    await initWeatherService();
                     refreshData();
                 },
                 (error) => {
@@ -881,7 +881,7 @@
             );
         }
 
-        function changeLocation() {
+        async function changeLocation() {
             const select = document.getElementById('locationSelect');
             const value = select.value;
 
@@ -894,11 +894,11 @@
             const [lat, lon] = coords.split(',').map(Number);
 
             currentLocation = { lat, lon, name };
-            initWeatherService();
+            await initWeatherService();
             refreshData();
         }
 
-        function initWeatherService() {
+        async function initWeatherService() {
             weatherService = new DSOWeatherService({
                 location: {
                     name: currentLocation.name,
@@ -906,6 +906,8 @@
                     lon: currentLocation.lon
                 }
             });
+            // Find the nearest weather station for this location
+            await weatherService.setLocationFromCoords(currentLocation.lat, currentLocation.lon);
         }
 
         // ═══════════════════════════════════════════════════════════════
@@ -928,10 +930,17 @@
             } catch (error) {
                 console.error('Failed to fetch weather data:', error);
                 updateDashboard(null);
-            } finally {
-                btn.textContent = '↻ Refresh';
-                btn.disabled = false;
             }
+
+            // Always build forecast strip (even if weather service fails)
+            try {
+                buildForecastStrip();
+            } catch (e) {
+                console.error('Forecast strip error:', e);
+            }
+
+            btn.textContent = '↻ Refresh';
+            btn.disabled = false;
         }
 
         function getRaw(obj) {
@@ -1050,8 +1059,6 @@
             document.getElementById('sourceSurface').className = 'source-status ' + (meta.surface ? 'source-online' : 'source-offline');
             document.getElementById('sourceSST').className = 'source-status ' + (meta.gulfBuoys ? 'source-online' : 'source-offline');
             document.getElementById('sourceAtmo').className = 'source-status ' + (meta.atmospheric ? 'source-online' : 'source-offline');
-
-            buildForecastStrip();
         }
 
         function buildForecastStrip() {
@@ -1129,9 +1136,9 @@
             }
         }
 
-        function skipDetection() {
+        async function skipDetection() {
             hideOverlay();
-            initWeatherService();
+            await initWeatherService();
             refreshData();
         }
 
@@ -1157,22 +1164,24 @@
 
                     document.getElementById('locationSelect').value = 'auto';
                     hideOverlay();
-                    initWeatherService();
+                    await initWeatherService();
                     refreshData();
                 },
-                (err) => {
+                async (err) => {
                     console.log('Geolocation denied or failed:', err.message);
                     hideOverlay();
-                    initWeatherService();
+                    await initWeatherService();
                     refreshData();
                 },
                 { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
             );
         } else {
             // No geolocation support - just load default
-            hideOverlay();
-            initWeatherService();
-            refreshData();
+            (async () => {
+                hideOverlay();
+                await initWeatherService();
+                refreshData();
+            })();
         }
     </script>
 </body>
