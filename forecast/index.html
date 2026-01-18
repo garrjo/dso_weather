@@ -181,7 +181,45 @@
         .risk-high { background: var(--accent-red); }
 
         .risk-level { font-size: 3rem; font-weight: 700; margin-bottom: 0.5rem; }
-        .risk-summary { color: var(--text-secondary); margin-bottom: 1.5rem; }
+        .risk-summary { color: var(--text-secondary); margin-bottom: 1rem; }
+
+        .month-risk-strip {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .month-risk-card {
+            flex: 1;
+            text-align: center;
+            padding: 0.4rem 0.25rem;
+            background: rgba(255,255,255,0.05);
+            border-radius: 6px;
+            cursor: help;
+            transition: transform 0.2s;
+        }
+
+        .month-risk-card:hover {
+            transform: scale(1.05);
+        }
+
+        .month-risk-name {
+            font-size: 0.6rem;
+            color: var(--text-dim);
+            margin-bottom: 0.25rem;
+            text-transform: uppercase;
+        }
+
+        .month-risk-meter {
+            width: 20px;
+            height: 8px;
+            border-radius: 4px;
+            margin: 0 auto;
+        }
+
+        .meter-green { background: var(--accent-green); }
+        .meter-yellow { background: var(--accent-gold); }
+        .meter-red { background: var(--accent-red); }
 
         .dso-indices {
             display: grid;
@@ -544,6 +582,12 @@
                 </div>
                 <div class="risk-level" id="riskLevel" style="color: var(--accent-blue);">MINIMAL</div>
                 <div class="risk-summary" id="riskSummary">Low severe weather threat</div>
+
+                <!-- 6-Month Risk Outlook -->
+                <div class="month-risk-strip" id="monthRiskStrip">
+                    <!-- Populated by JS -->
+                </div>
+
                 <div class="gauge-container">
                     <div class="gauge-fill gauge-gradient" id="riskGauge" style="width: 10%;"></div>
                 </div>
@@ -960,6 +1004,7 @@
             // Always build forecast strip (even if weather service fails)
             try {
                 buildForecastStrip();
+                buildMonthRiskStrip();
             } catch (e) {
                 console.error('Forecast strip error:', e);
             }
@@ -1123,6 +1168,59 @@
                 card.onclick = () => showDayDetails(forecast, i);
                 strip.appendChild(card);
             });
+        }
+
+        // Build 6-month risk outlook
+        function buildMonthRiskStrip() {
+            const strip = document.getElementById('monthRiskStrip');
+            strip.innerHTML = '';
+
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const today = new Date();
+            const currentMonth = today.getMonth();
+
+            // Calculate average risk for each of the next 6 months
+            for (let i = 0; i < 6; i++) {
+                const monthIndex = (currentMonth + i) % 12;
+                const monthName = months[monthIndex];
+
+                // Sample middle of each month for DSO calculation
+                const year = today.getFullYear() + (currentMonth + i >= 12 ? 1 : 0);
+                const sampleDate = new Date(year, monthIndex, 15);
+                const doy = dsoEngine.getDayOfYear(sampleDate);
+
+                // Get DSO factors for this month
+                const catalyst = dsoEngine.getCatalyst(doy);
+                const solar = dsoEngine.getSolarAngle(currentLocation.lat, doy);
+                const fuel = dsoEngine.getFuel(currentLocation.lat);
+                const gradient = dsoEngine.getGradient(currentLocation.lat);
+
+                const P = fuel * catalyst * solar;
+                const V = gradient * catalyst * solar;
+                const D = fuel * gradient * Math.pow(catalyst, 2) * Math.pow(solar, 2);
+
+                // Determine risk level and color
+                let meterClass, riskLabel;
+                if (D > 0.12) {
+                    meterClass = 'meter-red';
+                    riskLabel = 'HIGH';
+                } else if (D > 0.06) {
+                    meterClass = 'meter-yellow';
+                    riskLabel = 'MODERATE';
+                } else {
+                    meterClass = 'meter-green';
+                    riskLabel = 'LOW';
+                }
+
+                const card = document.createElement('div');
+                card.className = 'month-risk-card';
+                card.title = `${months[monthIndex]} ${year}\nRisk: ${riskLabel}\nP: ${(P * 100).toFixed(0)}%\nV: ${V.toFixed(2)}\nD: ${D.toFixed(3)}\nCatalyst: ${catalyst.toFixed(2)}`;
+                card.innerHTML = `
+                    <div class="month-risk-name">${monthName}</div>
+                    <div class="month-risk-meter ${meterClass}"></div>
+                `;
+                strip.appendChild(card);
+            }
         }
 
         function showDayDetails(forecast, index) {
