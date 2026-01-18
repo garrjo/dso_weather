@@ -22,14 +22,42 @@
             --border: #3a3a5c;
         }
 
+        [data-theme="light"] {
+            --bg-dark: #f0f2f5;
+            --bg-card: #ffffff;
+            --bg-card-hover: #f5f5f5;
+            --accent-blue: #2563eb;
+            --accent-gold: #d97706;
+            --accent-orange: #ea580c;
+            --accent-red: #dc2626;
+            --accent-green: #16a34a;
+            --accent-purple: #9333ea;
+            --text-primary: #1a1a2e;
+            --text-secondary: #4b5563;
+            --text-dim: #9ca3af;
+            --border: #e5e7eb;
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%);
+            background: var(--bg-dark);
             color: var(--text-primary);
             min-height: 100vh;
             line-height: 1.5;
+            transition: background 0.3s, color 0.3s;
+        }
+
+        [data-theme="light"] {
+            background: linear-gradient(135deg, #f0f2f5 0%, #e5e7eb 50%, #f0f2f5 100%);
+        }
+
+        [data-theme="light"] .detail-card,
+        [data-theme="light"] .current-weather,
+        [data-theme="light"] .dso-risk,
+        [data-theme="light"] .forecast-day {
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
 
         .dashboard { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
@@ -467,6 +495,7 @@
                 <div class="last-updated">Last updated: <span id="lastUpdated">--</span></div>
             </div>
             <div class="header-buttons">
+                <button class="btn" id="themeBtn" onclick="toggleTheme()">☀️ Light</button>
                 <button class="btn" id="geoBtn" onclick="detectLocation()">📍 Detect Location</button>
                 <button class="btn" id="refreshBtn" onclick="refreshData()">↻ Refresh</button>
             </div>
@@ -1125,6 +1154,31 @@
             document.getElementById('gradient').textContent = forecast.factors.gradient.toFixed(3);
             document.getElementById('gradientGauge').style.width = (forecast.factors.gradient * 100) + '%';
         }
+
+        // Theme toggle
+        function toggleTheme() {
+            const html = document.documentElement;
+            const btn = document.getElementById('themeBtn');
+
+            if (html.getAttribute('data-theme') === 'light') {
+                html.removeAttribute('data-theme');
+                btn.textContent = '☀️ Light';
+                localStorage.setItem('theme', 'dark');
+            } else {
+                html.setAttribute('data-theme', 'light');
+                btn.textContent = '🌙 Dark';
+                localStorage.setItem('theme', 'light');
+            }
+        }
+
+        // Load saved theme
+        (function() {
+            const saved = localStorage.getItem('theme');
+            if (saved === 'light') {
+                document.documentElement.setAttribute('data-theme', 'light');
+                document.getElementById('themeBtn').textContent = '🌙 Dark';
+            }
+        })();
 
         function hideOverlay() {
             const overlay = document.getElementById('loadingOverlay');
