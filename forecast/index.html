@@ -1163,46 +1163,78 @@
                 return Math.max(0.3, 0.60 - Math.abs(lat - 35) * 0.02);
             }
 
-            // Estimate if temperature is below freezing based on latitude and day of year
-            // Used for forecasts when real-time temperature isn't available
-            // CONSERVATIVE: Only estimate freezing when very confident (prefer rain over snow when uncertain)
-            estimateFreezing(lat, dayOfYear) {
+            // Bayesian probability of freezing temperature
+            // Returns { probability, isFreezing } where isFreezing requires P > 50%
+            getFreezingProbability(lat, dayOfYear, realTimeData = null) {
                 const absLat = Math.abs(lat);
 
-                // Calculate seasonal temperature modifier
-                // Day 0 = Jan 1 (winter in N hemisphere), Day 172 = June 21 (summer)
-                // Coldest around day 15-30 (mid-late January), warmest around day 195-210 (mid-July)
+                // === PRIOR: Seasonal freezing probability by latitude zone ===
+                // Based on climatology of freezing days per month
                 const coldestDay = 20;  // Around Jan 20
                 const yearProgress = (dayOfYear - coldestDay + 365) % 365;
                 const seasonalFactor = Math.cos((2 * Math.PI * yearProgress) / 365);
                 // seasonalFactor: +1 at coldest, -1 at warmest
 
-                // CONSERVATIVE freezing thresholds by latitude
-                // Only show snow when we're confident it's actually cold
-                // This avoids showing "snow" in Arkansas when it's 72°F
-                let freezingThreshold;
-                if (absLat < 30) {
-                    // Tropical/Deep South - almost never freezes
-                    freezingThreshold = 2;  // Effectively never (seasonalFactor maxes at 1)
-                } else if (absLat < 38) {
-                    // Southern US (includes Arkansas at 34.7°) - rarely freezes
-                    // Only estimate freezing in the coldest 2 weeks (late Dec - early Jan)
-                    freezingThreshold = 0.97;  // ~Dec 28 - Jan 12 only
-                } else if (absLat < 45) {
-                    // Northern US - freezes in deep winter
-                    freezingThreshold = 0.85;  // ~Dec 15 - Jan 25
-                } else if (absLat < 55) {
-                    // Upper Midwest/Canada - freezes in winter months
-                    freezingThreshold = 0.6;  // ~Nov 20 - Feb 20
-                } else {
-                    // Far North - freezes much of the year
-                    freezingThreshold = 0.2;  // ~Oct - Mar
-                }
-
                 // Southern hemisphere: flip the season
                 const effectiveSeasonalFactor = lat < 0 ? -seasonalFactor : seasonalFactor;
 
-                return effectiveSeasonalFactor > freezingThreshold;
+                // Base freezing probability by latitude (at peak winter)
+                let peakFreezingProb;
+                if (absLat < 25) {
+                    peakFreezingProb = 0.01;  // Tropical - almost never
+                } else if (absLat < 32) {
+                    peakFreezingProb = 0.10;  // Deep South - rare
+                } else if (absLat < 38) {
+                    peakFreezingProb = 0.25;  // Southern US (Arkansas ~35°)
+                } else if (absLat < 45) {
+                    peakFreezingProb = 0.50;  // Northern US
+                } else if (absLat < 55) {
+                    peakFreezingProb = 0.75;  // Upper Midwest/Canada
+                } else {
+                    peakFreezingProb = 0.90;  // Far North
+                }
+
+                // Prior probability: scale by season
+                // At peak winter (seasonalFactor=1): use peakFreezingProb
+                // At peak summer (seasonalFactor=-1): near 0
+                let prior = peakFreezingProb * Math.max(0, (effectiveSeasonalFactor + 0.5) / 1.5);
+                prior = Math.max(0.01, Math.min(0.99, prior));
+
+                // === LIKELIHOOD: Update based on real-time data ===
+                let posterior = prior;
+
+                if (realTimeData?.tempF != null) {
+                    // Strong evidence from actual temperature
+                    if (realTimeData.tempF <= 32) {
+                        // Actually freezing - very high probability
+                        posterior = 0.95;
+                    } else if (realTimeData.tempF <= 40) {
+                        // Cold but not freezing - moderate probability for later
+                        posterior = 0.30;
+                    } else if (realTimeData.tempF <= 50) {
+                        // Cool - low probability
+                        posterior = 0.10;
+                    } else {
+                        // Warm - very low probability
+                        posterior = 0.02;
+                    }
+                } else if (realTimeData?.tempC != null) {
+                    if (realTimeData.tempC <= 0) {
+                        posterior = 0.95;
+                    } else if (realTimeData.tempC <= 5) {
+                        posterior = 0.30;
+                    } else if (realTimeData.tempC <= 10) {
+                        posterior = 0.10;
+                    } else {
+                        posterior = 0.02;
+                    }
+                }
+
+                return {
+                    prior: prior,
+                    probability: posterior,
+                    isFreezing: posterior > 0.50  // Only confident if > 50%
+                };
             }
 
             // Calculate drift (uncertainty) based on time into forecast
@@ -1420,16 +1452,9 @@
                 let condition, icon, description;
                 const P = pWithDrift.probability;
 
-                // Check if below freezing (use real-time temp or estimate from season/latitude)
-                let isFreezing = false;
-                if (realTimeData?.tempC != null) {
-                    isFreezing = realTimeData.tempC <= 0;
-                } else if (realTimeData?.tempF != null) {
-                    isFreezing = realTimeData.tempF <= 32;
-                } else {
-                    // Estimate based on season and latitude for forecasts
-                    isFreezing = this.estimateFreezing(lat, dayOfYear);
-                }
+                // Bayesian probability of freezing - requires > 50% confidence to show snow
+                const freezingProb = this.getFreezingProbability(lat, dayOfYear, realTimeData);
+                const isFreezing = freezingProb.isFreezing;
 
                 // Classification based on Bayesian probability
                 // Use snow variants when below freezing
@@ -1486,6 +1511,7 @@
                 return {
                     condition, icon, description, riskLevel, riskColor,
                     isFreezing: isFreezing,
+                    freezingProbability: freezingProb.probability,
                     factors: { catalyst, solar, fuel: effectiveFuel, gradient },
                     indices: { P, V, D },
                     bayesian: {
@@ -1496,7 +1522,9 @@
                         drift: pWithDrift.drift,
                         confidence: pWithDrift.confidence,
                         signalConsistency: pWithDrift.signalConsistency,
-                        range: { low: pWithDrift.low, high: pWithDrift.high }
+                        range: { low: pWithDrift.low, high: pWithDrift.high },
+                        freezingPrior: freezingProb.prior,
+                        freezingPosterior: freezingProb.probability
                     }
                 };
             }
