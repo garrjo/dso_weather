@@ -442,6 +442,93 @@
             font-weight: 600;
         }
 
+        .week-summary {
+            margin-top: 0.75rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid var(--border);
+            font-size: 0.75rem;
+            color: var(--text-dim);
+        }
+
+        /* Log Overlay */
+        .log-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s, visibility 0.2s;
+        }
+
+        .log-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .log-panel {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 1.5rem;
+            max-width: 800px;
+            width: 95%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+
+        .log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .log-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .log-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .log-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+
+        .log-table th, .log-table td {
+            padding: 0.5rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .log-table th {
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        .log-table tr:hover {
+            background: rgba(255,255,255,0.03);
+        }
+
+        .log-note {
+            margin-top: 1rem;
+            font-size: 0.75rem;
+            color: var(--text-dim);
+        }
+
         .forecast-indices {
             display: flex;
             flex-direction: column;
@@ -709,6 +796,7 @@
             <div class="header-buttons">
                 <button class="btn" id="themeBtn" onclick="toggleTheme()">☀️ Light</button>
                 <button class="btn" id="geoBtn" onclick="detectLocation()">📍 Detect Location</button>
+                <button class="btn" onclick="showForecastLog()">📊 Log</button>
                 <button class="btn" id="refreshBtn" onclick="refreshData()">↻ Refresh</button>
             </div>
         </header>
@@ -947,6 +1035,23 @@
                 <span id="confidencePercent">92%</span>
             </div>
             <div class="popover-weeks" id="popoverWeeks">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Forecast Log Overlay -->
+    <div class="log-overlay" id="logOverlay" onclick="closeLogOverlay(event)">
+        <div class="log-panel" onclick="event.stopPropagation()">
+            <div class="log-header">
+                <span class="log-title">Forecast Log</span>
+                <div class="log-actions">
+                    <button class="btn" onclick="exportForecastLogCSV()">Export CSV</button>
+                    <button class="btn" onclick="exportForecastLog()">Export JSON</button>
+                    <button class="btn" onclick="closeLogOverlay()">&times;</button>
+                </div>
+            </div>
+            <div id="logContent">
                 <!-- Populated by JS -->
             </div>
         </div>
@@ -1444,6 +1549,7 @@
                 buildForecastStrip();
                 buildMonthRiskStrip();
                 generateWeekOutlook();
+                logDailyForecast();  // Log forecast to localStorage for accuracy tracking
             } catch (e) {
                 console.error('Forecast strip error:', e);
             }
@@ -1743,8 +1849,198 @@
                 }
             }
 
+            // Calculate weekly averages
+            const avgP = forecasts.reduce((sum, f) => sum + f.indices.P, 0) / 7;
+            const avgV = forecasts.reduce((sum, f) => sum + f.indices.V, 0) / 7;
+            const avgD = forecasts.reduce((sum, f) => sum + f.indices.D, 0) / 7;
+            const avgConfidence = forecasts.reduce((sum, f) => sum + f.bayesian.confidence, 0) / 7;
+
+            // Count condition types for the week
+            const conditionCounts = {};
+            forecasts.forEach(f => {
+                conditionCounts[f.condition] = (conditionCounts[f.condition] || 0) + 1;
+            });
+            const dominantCondition = Object.entries(conditionCounts).sort((a, b) => b[1] - a[1])[0];
+
+            // Add weekly summary
+            const weekSummary = `<div class="week-summary">
+                <strong>Week Average:</strong> P=${(avgP * 100).toFixed(0)}% V=${avgV.toFixed(2)} D=${avgD.toFixed(3)} |
+                Dominant: ${dominantCondition[0]} (${dominantCondition[1]}/7 days) |
+                Avg Confidence: ${(avgConfidence * 100).toFixed(0)}%
+            </div>`;
+
             // Combine and display
-            document.getElementById('outlookText').innerHTML = explanations.join(' ');
+            document.getElementById('outlookText').innerHTML = explanations.join(' ') + weekSummary;
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // DAILY FORECAST LOG (localStorage-based)
+        // ═══════════════════════════════════════════════════════════════
+        const FORECAST_LOG_KEY = 'dso_forecast_log';
+
+        function logDailyForecast() {
+            const today = new Date();
+            const dateKey = today.toISOString().split('T')[0];  // YYYY-MM-DD
+
+            // Get today's forecast
+            const forecast = dsoEngine.classifyWeather(
+                currentLocation.lat,
+                dsoEngine.getDayOfYear(),
+                null,
+                0
+            );
+
+            const logEntry = {
+                date: dateKey,
+                timestamp: today.toISOString(),
+                location: {
+                    name: currentLocation.name,
+                    lat: currentLocation.lat,
+                    lon: currentLocation.lon
+                },
+                forecast: {
+                    condition: forecast.condition,
+                    P: forecast.indices.P,
+                    V: forecast.indices.V,
+                    D: forecast.indices.D,
+                    riskLevel: forecast.riskLevel
+                },
+                factors: forecast.factors,
+                bayesian: {
+                    prior: forecast.bayesian.prior,
+                    posterior: forecast.bayesian.posterior,
+                    drift: forecast.bayesian.drift,
+                    confidence: forecast.bayesian.confidence,
+                    signalConsistency: forecast.bayesian.signalConsistency
+                },
+                // Placeholder for actual weather (to be filled manually or via API later)
+                actual: null
+            };
+
+            // Get existing log
+            let log = JSON.parse(localStorage.getItem(FORECAST_LOG_KEY) || '[]');
+
+            // Check if we already logged today for this location
+            const existingIndex = log.findIndex(
+                entry => entry.date === dateKey &&
+                         entry.location.lat === currentLocation.lat &&
+                         entry.location.lon === currentLocation.lon
+            );
+
+            if (existingIndex >= 0) {
+                // Update existing entry
+                log[existingIndex] = logEntry;
+            } else {
+                // Add new entry
+                log.push(logEntry);
+            }
+
+            // Keep last 365 days of data
+            if (log.length > 365) {
+                log = log.slice(-365);
+            }
+
+            localStorage.setItem(FORECAST_LOG_KEY, JSON.stringify(log));
+            console.log('Forecast logged:', logEntry);
+        }
+
+        function getForecastLog() {
+            return JSON.parse(localStorage.getItem(FORECAST_LOG_KEY) || '[]');
+        }
+
+        function exportForecastLog() {
+            const log = getForecastLog();
+            const blob = new Blob([JSON.stringify(log, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `dso_forecast_log_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function exportForecastLogCSV() {
+            const log = getForecastLog();
+            if (log.length === 0) {
+                alert('No forecast data to export');
+                return;
+            }
+
+            const headers = ['Date', 'Location', 'Lat', 'Lon', 'Condition', 'P', 'V', 'D', 'Risk',
+                           'Prior', 'Posterior', 'Drift', 'Confidence', 'Consistency',
+                           'Catalyst', 'Solar', 'Fuel', 'Gradient', 'Actual'];
+
+            const rows = log.map(entry => [
+                entry.date,
+                entry.location.name,
+                entry.location.lat.toFixed(4),
+                entry.location.lon.toFixed(4),
+                entry.forecast.condition,
+                (entry.forecast.P * 100).toFixed(1),
+                entry.forecast.V.toFixed(3),
+                entry.forecast.D.toFixed(4),
+                entry.forecast.riskLevel,
+                (entry.bayesian.prior * 100).toFixed(1),
+                (entry.bayesian.posterior * 100).toFixed(1),
+                (entry.bayesian.drift * 100).toFixed(1),
+                (entry.bayesian.confidence * 100).toFixed(1),
+                entry.bayesian.signalConsistency ? (entry.bayesian.signalConsistency * 100).toFixed(0) : '',
+                entry.factors.catalyst.toFixed(3),
+                entry.factors.solar.toFixed(3),
+                entry.factors.fuel.toFixed(3),
+                entry.factors.gradient.toFixed(3),
+                entry.actual || ''
+            ]);
+
+            const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `dso_forecast_log_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function showForecastLog() {
+            const log = getForecastLog();
+            const overlay = document.getElementById('logOverlay');
+            const content = document.getElementById('logContent');
+
+            if (log.length === 0) {
+                content.innerHTML = '<p>No forecast data logged yet. Data is logged automatically each time you load the page.</p>';
+            } else {
+                let html = `<p><strong>${log.length} entries</strong> (last 365 days)</p>`;
+                html += '<table class="log-table"><thead><tr>';
+                html += '<th>Date</th><th>Location</th><th>Condition</th><th>P%</th><th>D</th><th>Risk</th><th>Conf</th>';
+                html += '</tr></thead><tbody>';
+
+                // Show most recent first
+                log.slice().reverse().slice(0, 30).forEach(entry => {
+                    html += `<tr>
+                        <td>${entry.date}</td>
+                        <td>${entry.location.name.split(',')[0]}</td>
+                        <td>${entry.forecast.condition}</td>
+                        <td>${(entry.forecast.P * 100).toFixed(0)}%</td>
+                        <td>${entry.forecast.D.toFixed(3)}</td>
+                        <td>${entry.forecast.riskLevel}</td>
+                        <td>${(entry.bayesian.confidence * 100).toFixed(0)}%</td>
+                    </tr>`;
+                });
+
+                html += '</tbody></table>';
+                if (log.length > 30) {
+                    html += `<p class="log-note">Showing 30 most recent entries. Export for full data.</p>`;
+                }
+                content.innerHTML = html;
+            }
+
+            overlay.classList.add('active');
+        }
+
+        function closeLogOverlay(event) {
+            if (event && event.target !== event.currentTarget) return;
+            document.getElementById('logOverlay').classList.remove('active');
         }
 
         // Build 6-month risk outlook
