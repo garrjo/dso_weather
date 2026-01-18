@@ -221,6 +221,131 @@
         .meter-yellow { background: var(--accent-gold); }
         .meter-red { background: var(--accent-red); }
 
+        /* Month Popover */
+        .month-popover-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s, visibility 0.2s;
+        }
+
+        .month-popover-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .month-popover {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 1.5rem;
+            max-width: 400px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+
+        .popover-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .popover-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .popover-close {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.25rem;
+            line-height: 1;
+        }
+
+        .popover-close:hover { color: var(--text-primary); }
+
+        .popover-confidence {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            padding: 0.5rem 0.75rem;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            font-size: 0.85rem;
+        }
+
+        .confidence-bar {
+            flex: 1;
+            height: 6px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: var(--accent-blue);
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+
+        .popover-weeks {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .popover-week {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.6rem 0.75rem;
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+        }
+
+        .week-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            min-width: 60px;
+        }
+
+        .week-meter {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .week-details {
+            flex: 1;
+            font-size: 0.75rem;
+            color: var(--text-dim);
+        }
+
+        .week-risk {
+            font-size: 0.75rem;
+            font-weight: 600;
+            min-width: 70px;
+            text-align: right;
+        }
+
         .dso-indices {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -754,6 +879,26 @@
         </footer>
     </div>
 
+    <!-- Month Popover -->
+    <div class="month-popover-overlay" id="monthPopover" onclick="closeMonthPopover(event)">
+        <div class="month-popover" onclick="event.stopPropagation()">
+            <div class="popover-header">
+                <span class="popover-title" id="popoverTitle">January 2025</span>
+                <button class="popover-close" onclick="closeMonthPopover()">&times;</button>
+            </div>
+            <div class="popover-confidence">
+                <span>Confidence:</span>
+                <div class="confidence-bar">
+                    <div class="confidence-fill" id="confidenceFill" style="width: 92%;"></div>
+                </div>
+                <span id="confidencePercent">92%</span>
+            </div>
+            <div class="popover-weeks" id="popoverWeeks">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+    </div>
+
     <script src="noaaWeatherService.js"></script>
 
     <script>
@@ -1214,13 +1359,119 @@
 
                 const card = document.createElement('div');
                 card.className = 'month-risk-card';
-                card.title = `${months[monthIndex]} ${year}\nRisk: ${riskLabel}\nP: ${(P * 100).toFixed(0)}%\nV: ${V.toFixed(2)}\nD: ${D.toFixed(3)}\nCatalyst: ${catalyst.toFixed(2)}`;
+                card.title = `Click for ${months[monthIndex]} details`;
                 card.innerHTML = `
                     <div class="month-risk-name">${monthName}</div>
                     <div class="month-risk-meter ${meterClass}"></div>
                 `;
+                card.onclick = () => openMonthPopover(monthIndex, year, i);
                 strip.appendChild(card);
             }
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // MONTH POPOVER
+        // ═══════════════════════════════════════════════════════════════
+        function openMonthPopover(monthIndex, year, monthsAway) {
+            const months = ['January', 'February', 'March', 'April', 'May', 'June',
+                            'July', 'August', 'September', 'October', 'November', 'December'];
+
+            // Set title
+            document.getElementById('popoverTitle').textContent = `${months[monthIndex]} ${year}`;
+
+            // Calculate confidence: 100% - (monthsAway × 8%)
+            // Current month (monthsAway=0) has ±8% variability, so we show 92-100%
+            let confidence;
+            if (monthsAway === 0) {
+                confidence = 100; // Current month - highest confidence with ±8% variability
+            } else {
+                confidence = Math.max(4, 100 - (monthsAway * 8));
+            }
+
+            document.getElementById('confidenceFill').style.width = confidence + '%';
+            document.getElementById('confidencePercent').textContent = confidence + '%' + (monthsAway === 0 ? ' (±8%)' : '');
+
+            // Adjust color based on confidence
+            const fill = document.getElementById('confidenceFill');
+            if (confidence >= 80) {
+                fill.style.background = 'var(--accent-green)';
+            } else if (confidence >= 50) {
+                fill.style.background = 'var(--accent-gold)';
+            } else if (confidence >= 25) {
+                fill.style.background = 'var(--accent-orange)';
+            } else {
+                fill.style.background = 'var(--accent-red)';
+            }
+
+            // Build weekly breakdown
+            const weeksContainer = document.getElementById('popoverWeeks');
+            weeksContainer.innerHTML = '';
+
+            // Calculate DSO factors for each week of the month
+            const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+            const weeks = [
+                { label: 'Week 1', startDay: 1, endDay: 7 },
+                { label: 'Week 2', startDay: 8, endDay: 14 },
+                { label: 'Week 3', startDay: 15, endDay: 21 },
+                { label: 'Week 4', startDay: 22, endDay: Math.min(28, daysInMonth) }
+            ];
+
+            // Add week 5 if needed
+            if (daysInMonth > 28) {
+                weeks.push({ label: 'Week 5', startDay: 29, endDay: daysInMonth });
+            }
+
+            weeks.forEach(week => {
+                // Sample middle of the week
+                const midDay = Math.floor((week.startDay + week.endDay) / 2);
+                const sampleDate = new Date(year, monthIndex, midDay);
+                const doy = dsoEngine.getDayOfYear(sampleDate);
+
+                // Calculate DSO factors
+                const catalyst = dsoEngine.getCatalyst(doy);
+                const solar = dsoEngine.getSolarAngle(currentLocation.lat, doy);
+                const fuel = dsoEngine.getFuel(currentLocation.lat);
+                const gradient = dsoEngine.getGradient(currentLocation.lat);
+
+                const P = fuel * catalyst * solar;
+                const V = gradient * catalyst * solar;
+                const D = fuel * gradient * Math.pow(catalyst, 2) * Math.pow(solar, 2);
+
+                // Determine risk level
+                let meterClass, riskLabel, riskColor;
+                if (D > 0.12) {
+                    meterClass = 'meter-red';
+                    riskLabel = 'HIGH';
+                    riskColor = 'var(--accent-red)';
+                } else if (D > 0.06) {
+                    meterClass = 'meter-yellow';
+                    riskLabel = 'MODERATE';
+                    riskColor = 'var(--accent-orange)';
+                } else {
+                    meterClass = 'meter-green';
+                    riskLabel = 'LOW';
+                    riskColor = 'var(--accent-green)';
+                }
+
+                const weekEl = document.createElement('div');
+                weekEl.className = 'popover-week';
+                weekEl.innerHTML = `
+                    <span class="week-label">${week.label}</span>
+                    <div class="week-meter ${meterClass}"></div>
+                    <span class="week-details">P:${(P*100).toFixed(0)}% V:${V.toFixed(2)} D:${D.toFixed(3)}</span>
+                    <span class="week-risk" style="color: ${riskColor};">${riskLabel}</span>
+                `;
+                weeksContainer.appendChild(weekEl);
+            });
+
+            // Show the popover
+            document.getElementById('monthPopover').classList.add('active');
+        }
+
+        function closeMonthPopover(event) {
+            // If event is passed, only close if clicking overlay (not inner content)
+            if (event && event.target !== event.currentTarget) return;
+            document.getElementById('monthPopover').classList.remove('active');
         }
 
         function showDayDetails(forecast, index) {
