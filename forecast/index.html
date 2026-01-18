@@ -145,6 +145,39 @@
         .feels-like { color: var(--text-secondary); font-size: 1rem; }
         .weather-summary { color: var(--text-secondary); margin: 1rem 0; font-size: 0.95rem; }
 
+        .week-outlook {
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            margin: 0.75rem 0;
+            border-left: 3px solid var(--accent-blue);
+        }
+
+        .outlook-title {
+            font-size: 0.75rem;
+            color: var(--accent-blue);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .outlook-text {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .outlook-trend {
+            display: inline-block;
+            font-weight: 600;
+            padding: 0 0.25rem;
+        }
+
+        .trend-up { color: var(--accent-orange); }
+        .trend-down { color: var(--accent-green); }
+        .trend-stable { color: var(--accent-blue); }
+
         .quick-stats {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
@@ -676,6 +709,10 @@
                     </div>
                 </div>
                 <div class="weather-summary" id="weatherSummary">Detecting location...</div>
+                <div class="week-outlook" id="weekOutlook">
+                    <div class="outlook-title">7-Day Outlook</div>
+                    <div class="outlook-text" id="outlookText">Analyzing conditions...</div>
+                </div>
                 <div class="quick-stats">
                     <div class="quick-stat">
                         <div class="quick-stat-label">Wind</div>
@@ -1146,10 +1183,11 @@
                 updateDashboard(null);
             }
 
-            // Always build forecast strip (even if weather service fails)
+            // Always build forecast strip and outlook (even if weather service fails)
             try {
                 buildForecastStrip();
                 buildMonthRiskStrip();
+                generateWeekOutlook();
             } catch (e) {
                 console.error('Forecast strip error:', e);
             }
@@ -1313,6 +1351,99 @@
                 card.onclick = () => showDayDetails(forecast, i);
                 strip.appendChild(card);
             });
+        }
+
+        // Generate descriptive week outlook based on DSO factors
+        function generateWeekOutlook() {
+            const forecasts = dsoEngine.get7DayForecast(currentLocation.lat);
+            const today = forecasts[0];
+            const endOfWeek = forecasts[6];
+
+            // Calculate trends over the 7 days
+            const pStart = today.indices.P;
+            const pEnd = endOfWeek.indices.P;
+            const pChange = pEnd - pStart;
+            const pTrend = pChange > 0.05 ? 'rising' : pChange < -0.05 ? 'falling' : 'stable';
+
+            const dStart = today.indices.D;
+            const dEnd = endOfWeek.indices.D;
+            const dChange = dEnd - dStart;
+            const dTrend = dChange > 0.02 ? 'rising' : dChange < -0.02 ? 'falling' : 'stable';
+
+            const catalystStart = today.factors.catalyst;
+            const catalystEnd = endOfWeek.factors.catalyst;
+            const catalystTrend = catalystEnd > catalystStart + 0.02 ? 'increasing' : catalystEnd < catalystStart - 0.02 ? 'decreasing' : 'steady';
+
+            const solarStart = today.factors.solar;
+            const solarEnd = endOfWeek.factors.solar;
+            const solarTrend = solarEnd > solarStart + 0.02 ? 'strengthening' : solarEnd < solarStart - 0.02 ? 'weakening' : 'steady';
+
+            // Determine what's driving the pattern
+            const doy = dsoEngine.getDayOfYear();
+            const daysToSpringEquinox = (80 - doy + 365) % 365;
+            const daysToFallEquinox = (266 - doy + 365) % 365;
+            const daysToEquinox = Math.min(daysToSpringEquinox, daysToFallEquinox);
+            const nearEquinox = daysToEquinox < 45;
+            const approachingEquinox = daysToEquinox < 30 && catalystTrend === 'increasing';
+
+            const lat = currentLocation.lat;
+            const inTornadoAlley = lat >= 30 && lat <= 42;
+            const nearGulf = lat >= 25 && lat <= 35;
+
+            // Build explanation parts
+            let explanations = [];
+
+            // Catalyst explanation
+            if (approachingEquinox) {
+                const equinoxName = daysToSpringEquinox < daysToFallEquinox ? 'spring' : 'fall';
+                explanations.push(`<span class="outlook-trend trend-up">Catalyst rising</span> as we approach the ${equinoxName} equinox (${daysToEquinox} days away), increasing atmospheric instability.`);
+            } else if (nearEquinox && catalystStart > 0.7) {
+                explanations.push(`<span class="outlook-trend trend-up">Peak catalyst activity</span> near the equinox is driving elevated weather volatility.`);
+            } else if (catalystTrend === 'decreasing') {
+                explanations.push(`<span class="outlook-trend trend-down">Catalyst decreasing</span> as we move away from equinox, reducing severe weather potential.`);
+            }
+
+            // Solar angle explanation
+            if (solarTrend === 'strengthening' && solarEnd > 0.6) {
+                explanations.push(`<span class="outlook-trend trend-up">Solar energy input increasing</span>, adding more fuel to weather systems.`);
+            } else if (solarTrend === 'weakening') {
+                explanations.push(`<span class="outlook-trend trend-down">Solar angle declining</span>, reducing atmospheric energy input.`);
+            }
+
+            // Probability trend
+            if (pTrend === 'rising') {
+                const pctChange = Math.round(pChange * 100);
+                explanations.push(`<span class="outlook-trend trend-up">Precipitation probability trending upward</span> (+${pctChange}% by week's end).`);
+            } else if (pTrend === 'falling') {
+                const pctChange = Math.abs(Math.round(pChange * 100));
+                explanations.push(`<span class="outlook-trend trend-down">Precipitation chances decreasing</span> (-${pctChange}% by week's end).`);
+            }
+
+            // Danger index trend
+            if (dTrend === 'rising' && dEnd > 0.08) {
+                explanations.push(`<span class="outlook-trend trend-up">Severe weather risk elevating</span> through the week.`);
+            } else if (dTrend === 'falling' && dStart > 0.05) {
+                explanations.push(`<span class="outlook-trend trend-down">Severe weather threat diminishing</span> as the week progresses.`);
+            }
+
+            // Geographic context
+            if (inTornadoAlley && today.factors.gradient > 0.7 && today.indices.D > 0.05) {
+                explanations.push(`Your location in the collision zone (Tornado/Dixie Alley) maintains elevated gradient values where warm Gulf air meets cold fronts.`);
+            } else if (nearGulf && today.factors.fuel > 0.8) {
+                explanations.push(`Proximity to the Gulf of Mexico provides abundant moisture (high E-Fuel), sustaining precipitation potential.`);
+            }
+
+            // Overall summary if we don't have much to say
+            if (explanations.length === 0) {
+                if (today.indices.P < 0.15 && today.indices.D < 0.05) {
+                    explanations.push(`<span class="outlook-trend trend-stable">Quiet pattern expected</span> with low probability and minimal severe weather risk through the week.`);
+                } else {
+                    explanations.push(`<span class="outlook-trend trend-stable">Conditions remain relatively stable</span> with no significant changes expected in the DSO factors this week.`);
+                }
+            }
+
+            // Combine and display
+            document.getElementById('outlookText').innerHTML = explanations.join(' ');
         }
 
         // Build 6-month risk outlook
