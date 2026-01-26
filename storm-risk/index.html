@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Storm Risk Forecast</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            padding: 2rem 0;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: #8892b0;
+            font-size: 0.95rem;
+        }
+
+        /* Risk Dial */
+        .risk-dial {
+            background: rgba(255,255,255,0.05);
+            border-radius: 20px;
+            padding: 2rem;
+            text-align: center;
+            margin: 1.5rem 0;
+        }
+
+        .risk-level {
+            font-size: 4rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .risk-label {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .risk-label.low { color: #4ade80; }
+        .risk-label.moderate { color: #fbbf24; }
+        .risk-label.high { color: #f97316; }
+        .risk-label.extreme { color: #ef4444; }
+
+        .risk-description {
+            color: #94a3b8;
+            font-size: 1.1rem;
+            line-height: 1.5;
+        }
+
+        /* Threat Box */
+        .threat-box {
+            background: rgba(255,255,255,0.08);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border-left: 4px solid #64748b;
+        }
+
+        .threat-box.tornado { border-color: #ef4444; }
+        .threat-box.severe { border-color: #f97316; }
+        .threat-box.bomb { border-color: #a855f7; }
+        .threat-box.winter { border-color: #3b82f6; }
+        .threat-box.low { border-color: #4ade80; }
+
+        .threat-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .threat-detail {
+            color: #94a3b8;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        /* Controls */
+        .controls {
+            background: rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .control-row {
+            margin-bottom: 1rem;
+        }
+
+        .control-row:last-child {
+            margin-bottom: 0;
+        }
+
+        label {
+            display: block;
+            color: #94a3b8;
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+        }
+
+        select, input[type="range"] {
+            width: 100%;
+            padding: 0.75rem;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 1rem;
+        }
+
+        select option {
+            background: #1a1a2e;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            height: 8px;
+            padding: 0;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 24px;
+            height: 24px;
+            background: #fff;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .date-display {
+            text-align: center;
+            font-size: 1.1rem;
+            color: #fff;
+            margin-top: 0.5rem;
+        }
+
+        /* Season Indicator */
+        .season-bar {
+            display: flex;
+            justify-content: space-between;
+            margin: 1.5rem 0;
+            padding: 0.5rem 0;
+        }
+
+        .season {
+            text-align: center;
+            padding: 0.5rem;
+            border-radius: 8px;
+            flex: 1;
+            margin: 0 0.25rem;
+            font-size: 0.8rem;
+            color: #64748b;
+            transition: all 0.3s ease;
+        }
+
+        .season.active {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+        }
+
+        .season.peak {
+            background: rgba(239,68,68,0.2);
+            color: #ef4444;
+        }
+
+        /* What to Expect */
+        .expectations {
+            background: rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .expectations h3 {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            color: #e2e8f0;
+        }
+
+        .expect-item {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .expect-item:last-child {
+            border-bottom: none;
+        }
+
+        .expect-icon {
+            font-size: 1.5rem;
+            margin-right: 1rem;
+            width: 2rem;
+            text-align: center;
+        }
+
+        .expect-text {
+            flex: 1;
+        }
+
+        .expect-label {
+            font-size: 0.9rem;
+            color: #94a3b8;
+        }
+
+        .expect-value {
+            font-size: 1rem;
+            color: #fff;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 2rem 0;
+            color: #64748b;
+            font-size: 0.85rem;
+        }
+
+        footer a {
+            color: #94a3b8;
+        }
+
+        /* Simple explanation toggle */
+        .why-link {
+            text-align: center;
+            margin: 1rem 0;
+        }
+
+        .why-link a {
+            color: #64748b;
+            font-size: 0.85rem;
+            text-decoration: none;
+        }
+
+        .why-link a:hover {
+            color: #94a3b8;
+        }
+
+        .explanation {
+            display: none;
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            color: #94a3b8;
+            line-height: 1.6;
+        }
+
+        .explanation.show {
+            display: block;
+        }
+
+        .explanation strong {
+            color: #e2e8f0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌪️ Storm Risk Forecast</h1>
+            <p class="subtitle">Simple severe weather outlook</p>
+        </header>
+
+        <div class="controls">
+            <div class="control-row">
+                <label>Your Region</label>
+                <select id="regionSelect">
+                    <option value="tornado_alley">Oklahoma / Kansas</option>
+                    <option value="dixie_alley">Arkansas / Tennessee / Mississippi</option>
+                    <option value="southern_plains">Texas</option>
+                    <option value="midwest">Missouri / Illinois / Indiana</option>
+                    <option value="southeast">Georgia / Alabama</option>
+                    <option value="gulf_coast">Louisiana / Gulf Coast</option>
+                    <option value="northern_plains">Dakotas / Minnesota</option>
+                    <option value="great_lakes">Great Lakes Region</option>
+                    <option value="northeast">Pennsylvania / New York</option>
+                    <option value="new_england">New England</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <label>Date</label>
+                <input type="range" id="daySlider" min="1" max="365" value="105">
+                <div class="date-display" id="dateDisplay">April 15</div>
+            </div>
+        </div>
+
+        <div class="season-bar">
+            <div class="season" id="season-winter">❄️ Winter</div>
+            <div class="season" id="season-spring">🌸 Spring</div>
+            <div class="season" id="season-summer">☀️ Summer</div>
+            <div class="season" id="season-fall">🍂 Fall</div>
+        </div>
+
+        <div class="risk-dial">
+            <div class="risk-level" id="riskEmoji">⚠️</div>
+            <div class="risk-label high" id="riskLabel">HIGH RISK</div>
+            <div class="risk-description" id="riskDescription">
+                Peak severe weather season. Stay alert for watches and warnings.
+            </div>
+        </div>
+
+        <div class="threat-box tornado" id="threatBox">
+            <div class="threat-title">
+                <span id="threatIcon">🌪️</span>
+                <span id="threatName">Tornado Risk</span>
+            </div>
+            <div class="threat-detail" id="threatDetail">
+                All ingredients are in place for rotating storms. This is prime tornado season for your area.
+            </div>
+        </div>
+
+        <div class="expectations">
+            <h3>What to Expect</h3>
+            <div class="expect-item">
+                <div class="expect-icon">🌡️</div>
+                <div class="expect-text">
+                    <div class="expect-label">Storm Energy</div>
+                    <div class="expect-value" id="energyLevel">High - Gulf moisture available</div>
+                </div>
+            </div>
+            <div class="expect-item">
+                <div class="expect-icon">🔄</div>
+                <div class="expect-text">
+                    <div class="expect-label">Rotation Potential</div>
+                    <div class="expect-value" id="rotationLevel">High - Peak storm season</div>
+                </div>
+            </div>
+            <div class="expect-item">
+                <div class="expect-icon">⚡</div>
+                <div class="expect-text">
+                    <div class="expect-label">Storm Type</div>
+                    <div class="expect-value" id="stormType">Supercells and tornadoes possible</div>
+                </div>
+            </div>
+            <div class="expect-item">
+                <div class="expect-icon">⏰</div>
+                <div class="expect-text">
+                    <div class="expect-label">Peak Hours</div>
+                    <div class="expect-value" id="peakHours">3 PM - 7 PM</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="why-link">
+            <a href="#" onclick="toggleExplanation(); return false;">Why this forecast? ▼</a>
+        </div>
+
+        <div class="explanation" id="explanation">
+            <p><strong>The Science (Simplified):</strong></p>
+            <p>Severe storms need three things to line up:</p>
+            <p>1. <strong>Fuel</strong> — Warm, moist air from the Gulf of Mexico</p>
+            <p>2. <strong>A Trigger</strong> — Cold air colliding with warm air (the "front")</p>
+            <p>3. <strong>Spin</strong> — Changing wind patterns that cause rotation</p>
+            <p style="margin-top: 1rem;">The "spin" factor is highest in spring and fall when Earth's tilt is changing fastest. That's why tornado season peaks in April-May, not in the hottest months.</p>
+            <p style="margin-top: 1rem;">Summer has plenty of heat but almost no spin — you get pop-up thunderstorms, not organized tornadoes.</p>
+        </div>
+
+        <footer>
+            Powered by DSO Weather Model<br>
+            <a href="technical.html">View Technical Details</a>
+        </footer>
+    </div>
+
+    <script>
+        // Simplified DSO Engine
+        const regions = {
+            'tornado_alley':   { lat: 36, name: 'Oklahoma / Kansas', fuel: 0.80, gradient: 1.00 },
+            'dixie_alley':     { lat: 34, name: 'Arkansas / Tennessee', fuel: 0.90, gradient: 1.00 },
+            'southern_plains': { lat: 33, name: 'Texas', fuel: 0.85, gradient: 0.90 },
+            'midwest':         { lat: 40, name: 'Missouri / Illinois', fuel: 0.65, gradient: 0.80 },
+            'southeast':       { lat: 33, name: 'Georgia / Alabama', fuel: 0.85, gradient: 0.75 },
+            'gulf_coast':      { lat: 30, name: 'Gulf Coast', fuel: 1.00, gradient: 0.60 },
+            'northern_plains': { lat: 45, name: 'Dakotas / Minnesota', fuel: 0.45, gradient: 0.50 },
+            'great_lakes':     { lat: 44, name: 'Great Lakes', fuel: 0.40, gradient: 0.60 },
+            'northeast':       { lat: 42, name: 'Pennsylvania / NY', fuel: 0.40, gradient: 0.40 },
+            'new_england':     { lat: 43, name: 'New England', fuel: 0.35, gradient: 0.55 }
+        };
+
+        function getCatalyst(day) {
+            const shifted = day - 80; // Spring equinox
+            return Math.abs(Math.cos((2 * Math.PI * shifted) / 365));
+        }
+
+        function getSolarAngle(lat, day) {
+            const latRad = (lat * Math.PI) / 180;
+            const declination = 23.44 * Math.sin((2 * Math.PI * (day - 81)) / 365);
+            const decRad = (declination * Math.PI) / 180;
+            const elevation = Math.asin(
+                Math.sin(latRad) * Math.sin(decRad) + 
+                Math.cos(latRad) * Math.cos(decRad)
+            );
+            return Math.max(0, Math.sin(elevation));
+        }
+
+        function dayToDate(day) {
+            const date = new Date(2024, 0, 1);
+            date.setDate(day);
+            return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+        }
+
+        function getSeason(day) {
+            if (day >= 80 && day < 172) return 'spring';
+            if (day >= 172 && day < 266) return 'summer';
+            if (day >= 266 && day < 355) return 'fall';
+            return 'winter';
+        }
+
+        function updateForecast() {
+            const regionKey = document.getElementById('regionSelect').value;
+            const day = parseInt(document.getElementById('daySlider').value);
+            const region = regions[regionKey];
+            
+            const catalyst = getCatalyst(day);
+            const solar = getSolarAngle(region.lat, day);
+            const fuel = region.fuel;
+            const gradient = region.gradient;
+            
+            const danger = fuel * gradient * catalyst * catalyst * solar * solar;
+            const inversionRatio = catalyst / (solar + 0.1);
+            const season = getSeason(day);
+            
+            // Update date
+            document.getElementById('dateDisplay').textContent = dayToDate(day);
+            
+            // Update season indicator
+            ['winter', 'spring', 'summer', 'fall'].forEach(s => {
+                const el = document.getElementById('season-' + s);
+                el.classList.remove('active', 'peak');
+                if (s === season) {
+                    el.classList.add('active');
+                    if ((s === 'spring' || s === 'fall') && catalyst > 0.7) {
+                        el.classList.add('peak');
+                    }
+                }
+            });
+            
+            // Determine risk level and threat type
+            let riskLevel, riskEmoji, riskDesc, threatType, threatIcon, threatClass, threatDetail;
+            let energyLevel, rotationLevel, stormType;
+            
+            // BOMB CYCLONE (inversion)
+            if (inversionRatio > 1.2 && catalyst > 0.5 && solar < 0.6) {
+                riskLevel = danger > 0.3 ? 'HIGH' : 'MODERATE';
+                riskEmoji = '🌀';
+                riskDesc = 'Winter storm pattern. Rapid pressure drops possible.';
+                threatType = 'Bomb Cyclone Risk';
+                threatIcon = '🌀';
+                threatClass = 'bomb';
+                threatDetail = 'Conditions favor rapid storm intensification. Strong winds and heavy precipitation likely.';
+                energyLevel = 'Moderate - Cold season energy';
+                rotationLevel = 'High - Strong jet stream';
+                stormType = 'Intense low pressure systems';
+            }
+            // TORNADO
+            else if (gradient > 0.7 && catalyst > 0.6 && danger > 0.3) {
+                riskLevel = danger > 0.5 ? 'EXTREME' : 'HIGH';
+                riskEmoji = '🌪️';
+                riskDesc = 'Peak severe weather season. Stay alert for watches and warnings.';
+                threatType = 'Tornado Risk';
+                threatIcon = '🌪️';
+                threatClass = 'tornado';
+                threatDetail = 'All ingredients are in place for rotating storms. This is prime tornado season for your area.';
+                energyLevel = fuel > 0.7 ? 'High - Gulf moisture available' : 'Moderate - Some moisture';
+                rotationLevel = 'High - Peak storm season';
+                stormType = 'Supercells and tornadoes possible';
+            }
+            // SEVERE STORMS
+            else if (danger > 0.1 && catalyst > 0.3) {
+                riskLevel = 'MODERATE';
+                riskEmoji = '⛈️';
+                riskDesc = 'Scattered severe storms possible. Brief tornadoes can\'t be ruled out.';
+                threatType = 'Severe Storm Risk';
+                threatIcon = '⛈️';
+                threatClass = 'severe';
+                threatDetail = 'Some ingredients present for organized storms. Large hail and damaging winds are the main threats.';
+                energyLevel = fuel > 0.5 ? 'Moderate - Unstable air' : 'Low to moderate';
+                rotationLevel = catalyst > 0.5 ? 'Moderate - Some spin available' : 'Low - Limited rotation';
+                stormType = 'Strong to severe thunderstorms';
+            }
+            // SUMMER LULL
+            else if (solar > 0.8 && catalyst < 0.2) {
+                riskLevel = 'LOW';
+                riskEmoji = '🌤️';
+                riskDesc = 'Summer pattern. Isolated afternoon storms, but nothing organized.';
+                threatType = 'Pop-up Storms';
+                threatIcon = '⛅';
+                threatClass = 'low';
+                threatDetail = 'Plenty of heat but no spin. Typical summer storms — brief heavy rain and lightning, but rarely severe.';
+                energyLevel = 'High - Hot and humid';
+                rotationLevel = 'Very low - Summer lull';
+                stormType = 'Isolated afternoon thunderstorms';
+            }
+            // WINTER QUIET
+            else if (solar < 0.5 && catalyst < 0.3) {
+                riskLevel = 'LOW';
+                riskEmoji = '❄️';
+                riskDesc = 'Deep winter pattern. Quiet weather, occasional light snow.';
+                threatType = 'Winter Weather';
+                threatIcon = '❄️';
+                threatClass = 'winter';
+                threatDetail = 'Stable pattern with limited energy. Any precipitation will be light.';
+                energyLevel = 'Low - Cold and stable';
+                rotationLevel = 'Low - Quiet pattern';
+                stormType = 'Light snow or flurries';
+            }
+            // DEFAULT
+            else {
+                riskLevel = 'LOW';
+                riskEmoji = '☁️';
+                riskDesc = 'No significant severe weather expected.';
+                threatType = 'General Weather';
+                threatIcon = '☁️';
+                threatClass = 'low';
+                threatDetail = 'Conditions don\'t favor organized severe weather at this time.';
+                energyLevel = fuel > 0.5 ? 'Moderate' : 'Low';
+                rotationLevel = catalyst > 0.3 ? 'Moderate' : 'Low';
+                stormType = 'Routine weather';
+            }
+            
+            // Apply to UI
+            document.getElementById('riskEmoji').textContent = riskEmoji;
+            document.getElementById('riskLabel').textContent = riskLevel + ' RISK';
+            document.getElementById('riskLabel').className = 'risk-label ' + riskLevel.toLowerCase();
+            document.getElementById('riskDescription').textContent = riskDesc;
+            
+            document.getElementById('threatIcon').textContent = threatIcon;
+            document.getElementById('threatName').textContent = threatType;
+            document.getElementById('threatDetail').textContent = threatDetail;
+            document.getElementById('threatBox').className = 'threat-box ' + threatClass;
+            
+            document.getElementById('energyLevel').textContent = energyLevel;
+            document.getElementById('rotationLevel').textContent = rotationLevel;
+            document.getElementById('stormType').textContent = stormType;
+            document.getElementById('peakHours').textContent = solar > 0.5 ? '3 PM - 7 PM' : 'Anytime (frontal)';
+        }
+
+        function toggleExplanation() {
+            const el = document.getElementById('explanation');
+            el.classList.toggle('show');
+        }
+
+        // Event listeners
+        document.getElementById('regionSelect').addEventListener('change', updateForecast);
+        document.getElementById('daySlider').addEventListener('input', updateForecast);
+
+        // Initialize
+        updateForecast();
+    </script>
+</body>
+</html>
