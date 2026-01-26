@@ -1166,7 +1166,7 @@
         }
 
         // Update UI
-        function updateCurrent(d) {
+        function updateCurrent(d, daily) {
             if (!d) return;
             document.getElementById('currentTemp').textContent = toUnit(d.tempF);
             document.getElementById('feelsLike').textContent = toUnit(d.feelsLikeF || d.tempF);
@@ -1179,15 +1179,21 @@
             document.getElementById('feelsCard').textContent = toUnit(d.feelsLikeF || d.tempF);
             document.getElementById('actualCard').textContent = toUnit(d.tempF);
             document.getElementById('humidity').textContent = d.humidity || '--';
-            document.getElementById('dewpoint').textContent = d.dewpoint || '--';
+            document.getElementById('dewpoint').textContent = toUnit(d.dewpoint) || '--';
             document.getElementById('windSpeed').textContent = d.windSpeed || '--';
             document.getElementById('windGust').textContent = d.windGust || d.windSpeed || '--';
             document.getElementById('windDir').textContent = d.windDirection || 'N';
-            document.getElementById('windDeg').textContent = d.windDegrees || 0;
+            document.getElementById('windDeg').textContent = Math.round(d.windDegrees) || 0;
             document.getElementById('pressure').textContent = d.pressure ? (d.pressure / 33.864).toFixed(2) : '--';
             document.getElementById('visibility').textContent = d.visibility || '--';
-            document.getElementById('uvIndex').textContent = d.uvIndex || '--';
-            document.getElementById('cloudPct').textContent = d.cloudCover || 50;
+            document.getElementById('uvIndex').textContent = d.uvIndex ?? '--';
+            document.getElementById('cloudPct').textContent = d.cloudCover ?? 50;
+            document.getElementById('precipAmt').textContent = d.precipToday?.toFixed(1) || '0';
+
+            // Cloud icon based on coverage
+            const cc = d.cloudCover || 0;
+            document.getElementById('cloudIcon').textContent = cc < 20 ? '☀️' : cc < 50 ? '🌤️' : cc < 80 ? '⛅' : '☁️';
+            document.getElementById('cloudText').textContent = cc < 20 ? 'Clear' : cc < 50 ? 'Partly Cloudy' : cc < 80 ? 'Mostly Cloudy' : 'Overcast';
 
             // Humidity bars
             const hBars = document.getElementById('humidityBars');
@@ -1200,22 +1206,106 @@
             const deg = d.windDegrees || 0;
             document.getElementById('windArrow').style.transform = `translate(-50%, -100%) rotate(${deg + 180}deg)`;
 
-            // Status updates
-            updateStatuses(d);
+            // Pressure dot position (normal range: 29.8 - 30.3 in)
+            const pIn = d.pressure / 33.864;
+            const pPos = Math.max(5, Math.min(95, ((pIn - 29.5) / 1.0) * 100));
+            document.getElementById('pressureDot').style.left = pPos + '%';
+
+            // Update all descriptions
+            updateDescriptions(d, daily);
         }
 
-        function updateStatuses(d) {
+        function updateDescriptions(d, daily) {
+            const temp = d.tempF;
+            const feels = d.feelsLikeF || temp;
             const h = d.humidity || 50;
-            document.getElementById('humidityStatus').textContent = h > 70 ? 'High' : h < 30 ? 'Low' : 'Normal';
-            document.getElementById('humidityDot').className = 'status-dot ' + (h > 80 || h < 20 ? 'status-poor' : h > 60 ? 'status-moderate' : 'status-good');
-
             const ws = d.windSpeed || 0;
-            document.getElementById('windStatus').textContent = ws < 4 ? 'Calm' : ws < 12 ? 'Light' : ws < 25 ? 'Moderate' : 'Strong';
-            document.getElementById('windDot').className = 'status-dot ' + (ws > 30 ? 'status-poor' : ws > 15 ? 'status-moderate' : 'status-good');
-
             const uv = d.uvIndex || 0;
-            document.getElementById('uvStatus').textContent = uv <= 2 ? 'Low' : uv <= 5 ? 'Moderate' : uv <= 7 ? 'High' : 'Very High';
+            const vis = d.visibility || 10;
+            const pIn = d.pressure / 33.864;
+            const cc = d.cloudCover || 0;
+            const dp = d.dewpoint || 0;
+            const precip = d.precipToday || 0;
+
+            // Temperature
+            const tomorrow = daily?.[1];
+            if (tomorrow) {
+                const diff = tomorrow.highF - temp;
+                document.getElementById('tempDesc').textContent = diff > 5 ? 'Tomorrow will be warmer.' : diff < -5 ? 'Tomorrow will be cooler.' : 'Similar temperatures tomorrow.';
+            } else {
+                document.getElementById('tempDesc').textContent = temp > 80 ? 'Hot conditions today.' : temp < 40 ? 'Cold conditions today.' : 'Comfortable temperature.';
+            }
+            document.getElementById('tempStatus').textContent = temp > 90 ? 'Hot' : temp > 75 ? 'Warm' : temp > 55 ? 'Mild' : temp > 40 ? 'Cool' : 'Cold';
+
+            // Feels like
+            const feelsDiff = feels - temp;
+            if (Math.abs(feelsDiff) < 3) {
+                document.getElementById('feelsStatus').textContent = 'Comfortable';
+                document.getElementById('feelsDesc').textContent = 'Feels close to the actual temperature.';
+            } else if (feelsDiff < 0) {
+                document.getElementById('feelsStatus').textContent = 'Colder due to wind';
+                document.getElementById('feelsDesc').textContent = `Wind chill makes it feel ${Math.abs(Math.round(feelsDiff))}° colder.`;
+            } else {
+                document.getElementById('feelsStatus').textContent = 'Warmer due to humidity';
+                document.getElementById('feelsDesc').textContent = `Humidity makes it feel ${Math.round(feelsDiff)}° warmer.`;
+            }
+            document.getElementById('feelsDot').className = 'status-dot ' + (Math.abs(feelsDiff) > 10 ? 'status-poor' : Math.abs(feelsDiff) > 5 ? 'status-moderate' : 'status-good');
+
+            // Cloud cover
+            document.getElementById('cloudDesc').textContent = cc < 20 ? 'Clear skies expected.' : cc < 50 ? 'Some clouds, mostly sunny.' : cc < 80 ? 'Mostly cloudy conditions.' : 'Overcast skies.';
+
+            // Precipitation
+            document.getElementById('precipStatus').textContent = precip > 0.5 ? 'Precipitation' : precip > 0 ? 'Light Precipitation' : 'No Precipitation';
+            document.getElementById('precipDot').className = 'status-dot ' + (precip > 0.5 ? 'status-moderate' : 'status-good');
+            document.getElementById('precipDesc').textContent = precip > 0 ? `${precip.toFixed(2)} inches expected.` : 'No precipitation in the next 24 hours.';
+
+            // Humidity
+            document.getElementById('humidityStatus').textContent = h > 70 ? 'High' : h < 30 ? 'Low' : 'Normal';
+            document.getElementById('humidityDot').className = 'status-dot ' + (h > 80 || h < 20 ? 'status-poor' : h > 65 ? 'status-moderate' : 'status-good');
+            document.getElementById('humidityDesc').textContent = h > 70 ? 'Muggy conditions, may feel uncomfortable.' : h < 30 ? 'Very dry, consider moisturizing.' : 'Comfortable humidity levels.';
+
+            // Wind
+            let windStatus = 'Calm';
+            if (ws >= 31) windStatus = 'Strong';
+            else if (ws >= 20) windStatus = 'Fresh';
+            else if (ws >= 12) windStatus = 'Moderate';
+            else if (ws >= 4) windStatus = 'Light';
+            document.getElementById('windStatus').textContent = windStatus;
+            document.getElementById('windDot').className = 'status-dot ' + (ws > 30 ? 'status-poor' : ws > 20 ? 'status-moderate' : 'status-good');
+            document.getElementById('windDesc').textContent = ws < 4 ? 'Calm conditions.' : ws < 12 ? `Light breeze from the ${d.windDirection}.` : ws < 25 ? `Moderate winds from the ${d.windDirection}.` : `Strong winds, gusts to ${d.windGust} mph.`;
+
+            // UV
+            let uvStatus = 'Low', uvDesc = 'Minimal sun protection needed.';
+            if (uv > 10) { uvStatus = 'Extreme'; uvDesc = 'Avoid sun exposure if possible.'; }
+            else if (uv > 7) { uvStatus = 'Very High'; uvDesc = 'Extra protection needed.'; }
+            else if (uv > 5) { uvStatus = 'High'; uvDesc = 'Protection required.'; }
+            else if (uv > 2) { uvStatus = 'Moderate'; uvDesc = 'Some protection recommended.'; }
+            document.getElementById('uvStatus').textContent = uvStatus;
             document.getElementById('uvDot').className = 'status-dot ' + (uv > 7 ? 'status-poor' : uv > 5 ? 'status-moderate' : 'status-good');
+            document.getElementById('uvDesc').textContent = uvDesc;
+
+            // Pressure
+            let pStatus = 'Steady', pDesc = 'Stable conditions.';
+            if (pIn > 30.2) { pStatus = 'High'; pDesc = 'High pressure, fair weather likely.'; }
+            else if (pIn < 29.8) { pStatus = 'Low'; pDesc = 'Low pressure, unsettled weather possible.'; }
+            else { pStatus = 'Normal'; pDesc = 'Normal atmospheric pressure.'; }
+            document.getElementById('pressureStatus').textContent = pStatus;
+            document.getElementById('pressureStatusDot').className = 'status-dot ' + (pIn < 29.6 ? 'status-moderate' : 'status-good');
+            document.getElementById('pressureDesc').textContent = pDesc;
+
+            // Visibility
+            let visStatus = 'Excellent', visDesc = 'Clear visibility.';
+            if (vis < 1) { visStatus = 'Very Poor'; visDesc = 'Dense fog or heavy precipitation.'; }
+            else if (vis < 3) { visStatus = 'Poor'; visDesc = 'Reduced visibility, drive carefully.'; }
+            else if (vis < 6) { visStatus = 'Moderate'; visDesc = 'Some haze or light fog.'; }
+            else if (vis < 10) { visStatus = 'Good'; visDesc = 'Good visibility conditions.'; }
+            document.getElementById('visStatus').textContent = visStatus;
+            document.getElementById('visDot').className = 'status-dot ' + (vis < 3 ? 'status-poor' : vis < 6 ? 'status-moderate' : 'status-good');
+            document.getElementById('visDesc').textContent = visDesc;
+
+            // Update visibility bars
+            const visBar4 = document.getElementById('visBar4');
+            visBar4.style.background = vis >= 10 ? 'var(--accent-green)' : 'rgba(255,255,255,0.1)';
         }
 
         function updateDSO() {
@@ -1334,7 +1424,7 @@
         // Fetch data
         async function fetchData() {
             try {
-                const url = `https://api.open-meteo.com/v1/forecast?latitude=${currentLocation.lat}&longitude=${currentLocation.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,surface_pressure,cloud_cover&hourly=temperature_2m,weather_code,precipitation_probability&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto`;
+                const url = `https://api.open-meteo.com/v1/forecast?latitude=${currentLocation.lat}&longitude=${currentLocation.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m,surface_pressure,cloud_cover,visibility,uv_index&hourly=temperature_2m,weather_code,precipitation_probability&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,sunrise,sunset,uv_index_max&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto`;
                 const res = await fetch(url);
                 const data = await res.json();
 
@@ -1343,14 +1433,16 @@
                     feelsLikeF: Math.round(data.current.apparent_temperature),
                     humidity: data.current.relative_humidity_2m,
                     windSpeed: Math.round(data.current.wind_speed_10m),
+                    windGust: Math.round(data.current.wind_gusts_10m || data.current.wind_speed_10m),
                     windDegrees: data.current.wind_direction_10m,
-                    windDirection: ['N','NE','E','SE','S','SW','W','NW'][Math.round(data.current.wind_direction_10m / 45) % 8],
+                    windDirection: ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'][Math.round(data.current.wind_direction_10m / 22.5) % 16],
                     pressure: Math.round(data.current.surface_pressure),
                     cloudCover: data.current.cloud_cover,
                     condition: getCondition(data.current.weather_code),
                     dewpoint: Math.round(data.current.temperature_2m - ((100 - data.current.relative_humidity_2m) / 5)),
-                    visibility: 10,
-                    uvIndex: Math.floor(Math.random() * 6)
+                    visibility: data.current.visibility ? Math.round(data.current.visibility / 1609.34) : 10,
+                    uvIndex: Math.round(data.current.uv_index || data.daily?.uv_index_max?.[0] || 0),
+                    precipToday: data.daily?.precipitation_sum?.[0] || 0
                 };
 
                 const hourly = data.hourly.time.slice(0, 24).map((t, i) => ({
@@ -1378,7 +1470,10 @@
                     document.getElementById('dayLength').textContent = `${Math.floor(len)} hrs ${Math.round((len % 1) * 60)} mins`;
                 }
 
-                updateCurrent(current);
+                // Moon calculations (approximation)
+                updateMoonData();
+
+                updateCurrent(current, daily);
                 updateHourly(hourly);
                 updateDaily(daily);
                 updateDSO();
@@ -1387,6 +1482,48 @@
             } catch (e) {
                 console.error('Fetch error:', e);
             }
+        }
+
+        // Moon phase calculation
+        function updateMoonData() {
+            const now = new Date();
+            // Synodic month = 29.53 days, known new moon: Jan 29, 2025
+            const knownNewMoon = new Date(2025, 0, 29);
+            const daysSinceNew = (now - knownNewMoon) / 86400000;
+            const moonCycle = 29.53;
+            const phase = ((daysSinceNew % moonCycle) + moonCycle) % moonCycle;
+            const phasePercent = Math.round((phase / moonCycle) * 100);
+
+            // Moon icons based on phase
+            let moonIcon = '🌑';
+            if (phase < 3.69) moonIcon = '🌑';
+            else if (phase < 7.38) moonIcon = '🌒';
+            else if (phase < 11.07) moonIcon = '🌓';
+            else if (phase < 14.76) moonIcon = '🌔';
+            else if (phase < 18.45) moonIcon = '🌕';
+            else if (phase < 22.14) moonIcon = '🌖';
+            else if (phase < 25.83) moonIcon = '🌗';
+            else moonIcon = '🌘';
+
+            document.getElementById('moonIcon').textContent = moonIcon;
+            document.getElementById('moonPhase').textContent = phasePercent;
+
+            // Next full moon (phase 14.76 days from new)
+            const daysToFull = phase < 14.76 ? 14.76 - phase : moonCycle - phase + 14.76;
+            const nextFull = new Date(now.getTime() + daysToFull * 86400000);
+            document.getElementById('nextFull').textContent = nextFull.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+            // Approximate moonrise/moonset (varies ~50min/day from sun times)
+            const baseOffset = phase * 50; // minutes offset from sun
+            const moonriseHr = 7 + Math.floor(baseOffset / 60);
+            const moonriseMin = Math.round(baseOffset % 60);
+            const moonsetHr = (moonriseHr + 12) % 24;
+
+            document.getElementById('moonrise').textContent = `${moonriseHr > 12 ? moonriseHr - 12 : moonriseHr}:${String(moonriseMin).padStart(2,'0')} ${moonriseHr >= 12 ? 'PM' : 'AM'}`;
+            document.getElementById('moonset').textContent = `${moonsetHr > 12 ? moonsetHr - 12 : moonsetHr}:${String(moonriseMin).padStart(2,'0')} ${moonsetHr >= 12 ? 'PM' : 'AM'}`;
+
+            const moonLen = 12 + (phase < 14.76 ? phase / 14.76 * 2 : (moonCycle - phase) / 14.76 * 2);
+            document.getElementById('moonLength').textContent = `${Math.floor(moonLen)} hrs ${Math.round((moonLen % 1) * 60)} mins`;
         }
 
         function getCondition(code) {
